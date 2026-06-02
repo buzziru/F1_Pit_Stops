@@ -20,9 +20,9 @@ _최종 갱신: 2026-06-02 (exp_004 Driver OOF TE 채택, OOF 0.9495)_
 - 이후 실험은 **exp_004(0.9495)** 를 기준으로 비교
 
 ## 🔜 다음 할 일 (우선순위)
-1. **추가 인코딩 실험** — `Race`/`Compound` OOF TE 추가 (`conf/features` 새 그룹), Driver TE 와 조합 → OOF 비교
-2. **피처 엔지니어링** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
-3. (M4) Optuna sweeper로 하이퍼파라미터 튜닝
+1. **추가 인코딩 실험 (#6)** — `Race`/`Compound` OOF TE 추가 (`conf/features` 새 그룹), Driver TE 와 조합 → exp_004(0.94952) 대비 OOF 비교
+2. **피처 엔지니어링 (#7)** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
+3. (M4) Optuna sweeper로 하이퍼파라미터 튜닝 (이슈 미생성 — 튜닝 단계 진입 시)
 
 ## ✅ 완료
 - 베이스라인 exp_001 (#2, 제출까지) / W&B 연동 (#4, `F1-Pit`) / EDA #1 + LapTime·열화 심층(eda_02)
@@ -41,7 +41,8 @@ _최종 갱신: 2026-06-02 (exp_004 Driver OOF TE 채택, OOF 0.9495)_
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈
-- (없음 — 다음 작업은 위 "다음 할 일"에서 이슈화)
+- [#6](https://github.com/buzziru/F1_Pit_Stops/issues/6) [exp] Race/Compound OOF TE (Driver와 조합) (M3, P1) ← 다음
+- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) [feature] 파생 피처 (RaceProgress 구간화·열화·cumcount) (M3, P2)
 - ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#3 Driver OOF TE(exp_004)~~ ✅(채택) / ~~#4 W&B~~ ✅ / ~~#5 is_stable_delta ablation~~ ✅(기각)
 
 repo: https://github.com/buzziru/F1_Pit_Stops
