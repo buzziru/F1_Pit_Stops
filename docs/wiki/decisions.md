@@ -2,6 +2,11 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [007] 설정 분리: 구조적=config.py, 튜닝 노브=Hydra — 2026-06-02
+- **결정**: 경로·컬럼·CV·W&B project 등 구조적 상수는 `src/config.py` 유지, 모델 params·타깃 인코딩 등 튜닝/스윕 노브는 `conf/`(Hydra)로 이동. `train.py` 는 Hydra Compose API 로 합성.
+- **이유**: 실험/스윕 노브를 한 곳에 모으고 CLI 오버라이드·config 그룹 제공. M4 튜닝에서 Optuna 스윕으로 확장 대비.
+- **트레이드오프**: Python 3.14 + Hydra 1.3 의 `@hydra.main` argparse 비호환 → Compose API 우회(멀티런 `-m` 미지원). M4 전 Python 3.11(Kaggle 동일) pin 후 `@hydra.main`/Optuna 승격 예정.
+
 ## [006] OOF 를 1차 판단 기준으로 신뢰 — 2026-06-02
 - **결정**: 실험 비교는 OOF AUC 기준으로 진행하고, Kaggle 제출은 마일스톤/큰 변화 시에만 한다.
 - **이유**: exp_001 베이스라인에서 OOF 0.94394 vs Public LB 0.94434 (**갭 +0.0004**) → CV가 LB를 잘 대변. StratifiedKFold 설계 검증됨.

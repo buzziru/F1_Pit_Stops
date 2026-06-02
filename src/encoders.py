@@ -34,7 +34,7 @@ class OOFTargetEncoder:
         self,
         cols: list[str],
         *,
-        smoothing: float = config.TARGET_ENCODE_SMOOTHING,
+        smoothing: float = 20.0,
         n_inner: int = 5,
         seed: int = config.SEED,
     ) -> None:

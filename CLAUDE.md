@@ -27,9 +27,10 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
 CLAUDE.md         # 이 문서 (프로젝트 가이드)
 pyproject.toml    # uv 의존성 (base / eda / gpu)
 .gitignore        # .env·data·산출물 제외
-.env              # Kaggle 인증 (git 제외)
+.env              # Kaggle/W&B 인증 (git 제외)
+conf/             # Hydra 설정 — 튜닝/실험 노브 (config.yaml, model/, features/)
 src/
-  config.py     # 경로, 시드, 컬럼 정의, CV 파라미터 (단일 진실 공급원)
+  config.py     # 경로, 시드, 컬럼, CV 등 구조적 상수 (튜닝 노브는 conf/ 참조)
   data.py       # 로드/IO (범주형 category 변환)
   features.py   # 피처 엔지니어링 (train/test 공통 적용)
   encoders.py   # 누수 방지 OOF 타깃 인코딩
@@ -53,7 +54,7 @@ data/           # train/test/sample_submission  ← git 제외
 ## 모델링
 - 베이스라인: **LightGBM (CPU, 로컬)**. native categorical: `Driver, Compound, Race`
 - **불균형(19.9%) 가중 미사용** — 지표가 ROC-AUC(순위 기반)라 `is_unbalance`/`scale_pos_weight` 는 점수에 거의 영향 없거나 해로울 수 있음. 기본 `is_unbalance=False`, on/off 는 실험으로 비교.
-- 고카디널리티 `Driver`(887): **누수 방지 OOF 타깃 인코딩 구현됨** (`src/encoders.py`, fold-내 fit). `config.TARGET_ENCODE_COLS` 에 컬럼 추가로 활성화
+- 고카디널리티 `Driver`(887): **누수 방지 OOF 타깃 인코딩 구현됨** (`src/encoders.py`, fold-내 fit). `features=driver_te` 로 활성화 (`conf/features/`)
 - 이후: XGBoost / CatBoost (GPU, Kaggle) → 스태킹/블렌딩
 
 ## 실험 추적
@@ -77,8 +78,11 @@ data/           # train/test/sample_submission  ← git 제외
 # 의존성 설치
 uv sync                      # 또는 uv sync --extra eda / --extra gpu
 
-# 학습 (OOF + 제출 파일 + JSON 로그 생성)
-uv run python -m src.train --exp-id exp_001 --notes "lgbm baseline"
+# 학습 (Hydra 설정 기반 — OOF + 제출 파일 + JSON 로그 + W&B)
+uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
+#  파라미터 오버라이드:  ... exp_id=exp_003 model.params.num_leaves=127
+#  타깃 인코딩:          ... exp_id=exp_002 features=driver_te
+#  W&B 끄기:             ... use_wandb=false
 
 # 제출 (.env 의 KAGGLE_USERNAME/KAGGLE_KEY 사용)
 set -a; . ./.env; set +a

@@ -1,0 +1,19 @@
+# Hydra 루트 설정 — 튜닝/실험 노브의 단일 진입점.
+# 구조적 상수(경로·컬럼·CV·W&B project)는 src/config.py 유지.
+defaults:
+  - model: lgbm
+  - features: base
+  - _self_
+
+exp_id: ???        # 필수 (CLI 로 지정: exp_id=exp_002)
+notes: ""
+use_wandb: true
+
+hydra:
+  job:
+    chdir: false   # cwd 변경 안 함 (src.config 절대경로 사용)
+  run:
+    dir: outputs/${exp_id}
+  sweep:
+    dir: outputs/multirun
+    subdir: ${hydra.job.num}

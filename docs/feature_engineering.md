@@ -25,9 +25,9 @@
 > `src/encoders.py`의 **`OOFTargetEncoder`** 가 `train.py` fold 루프에 연결돼 있다.
 > - **train 행**: 내부 KFold 로 *다른* train 행 통계만 사용 (자기 라벨 미사용)
 > - **valid/test**: 전체 train fold 통계로 인코딩 → 누수 없음
-> - 활성화: `src/config.py` 의 `TARGET_ENCODE_COLS` 에 컬럼 추가 (예: `["Driver"]`).
+> - 활성화: `features=driver_te` (`conf/features/`) — `target_encode_cols: [Driver]`.
 >   대상 컬럼은 native categorical 에서 자동 제외되고 float 로 치환됨.
-> - 스무딩 강도: `TARGET_ENCODE_SMOOTHING` (기본 20.0).
+> - 스무딩 강도: `conf/features/*.yaml` 의 `target_encode_smoothing` (기본 20.0).
 - [x] OOF target encoding 인프라 (`encoders.OOFTargetEncoder`)
 - [ ] `Driver` target encoding 활성화 + OOF AUC 비교 (베이스라인 대비)
 - [ ] `Race`, `Compound` 인코딩 실험

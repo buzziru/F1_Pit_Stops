@@ -1,0 +1,3 @@
+# Driver OOF 타깃 인코딩 활성 (native categorical 에서 제외 → fold-내 OOF 치환).
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0

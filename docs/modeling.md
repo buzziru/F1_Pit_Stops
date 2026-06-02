@@ -37,9 +37,12 @@
 
 ## 제출 절차
 ```bash
-uv run python -m src.train --exp-id exp_XXX --notes "..."
+uv run python -m src.train exp_id=exp_XXX notes="..."   # Hydra: features=driver_te, model.params.* 오버라이드 가능
 set -a; . ./.env; set +a
 kaggle competitions submit -c playground-series-s6e5 \
   -f experiments/submissions/exp_XXX.csv -m "exp_XXX ..."
 # 제출 후 LB 점수를 해당 JSON 로그의 lb_score 에 기록
 ```
+
+> 설정 분리: 튜닝/실험 노브(모델 params, 타깃 인코딩)는 `conf/`(Hydra), 구조적 상수는 `src/config.py`.
+> ⚠️ 현 Python 3.14 + Hydra 1.3 비호환으로 `@hydra.main` 대신 Compose API 사용 → 멀티런 `-m` 미지원. M4 튜닝 전 Python 3.11(Kaggle 동일) pin 후 `@hydra.main`/Optuna 승격 예정.

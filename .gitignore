@@ -26,6 +26,11 @@ venv/
 # ===== W&B =====
 wandb/
 
+# ===== Hydra 실행 출력 =====
+outputs/
+multirun/
+.hydra/
+
 # ===== 환경/에디터 dotfiles (스튜디오 홈 공유로 인한 노이즈 제외) =====
 .cache/
 .config/

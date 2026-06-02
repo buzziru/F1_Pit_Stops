@@ -14,8 +14,9 @@ F1 레이스에서 **다음 랩 피트스톱 여부(`PitNextLap`)** 를 예측�
 
 ## 🗂️ 프로젝트 구조
 ```
+conf/           # Hydra 설정 — 튜닝/실험 노브 (config.yaml, model/lgbm, features/*)
 src/
-  config.py     # 경로·시드·컬럼·CV 파라미터 (단일 진실 공급원)
+  config.py     # 경로·시드·컬럼·CV 등 구조적 상수 (튜닝 노브는 conf/)
   data.py       # 로드/IO (범주형 category 변환)
   features.py   # 피처 엔지니어링 (train/test 공통)
   encoders.py   # 누수 방지 OOF 타깃 인코딩
@@ -49,8 +50,9 @@ set -a; . ./.env; set +a
 kaggle competitions download -c playground-series-s6e5 -p data/ && \
   unzip -o data/*.zip -d data/ && rm data/*.zip
 
-# 학습 (OOF + 제출파일 + JSON 로그)
-uv run python -m src.train --exp-id exp_001 --notes "lgbm baseline"
+# 학습 (Hydra 설정 기반: OOF + 제출파일 + JSON 로그 + W&B)
+uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
+#  타깃 인코딩: features=driver_te / 파라미터: model.params.num_leaves=127 / W&B off: use_wandb=false
 
 # 제출
 kaggle competitions submit -c playground-series-s6e5 \

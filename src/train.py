@@ -1,65 +1,54 @@
-"""LightGBM 학습 루프 (StratifiedKFold OOF).
+"""LightGBM 학습 루프 (StratifiedKFold OOF) — Hydra 설정 기반.
 
-실행: python -m src.train --exp-id exp_001
-- fold 별 AUC 계산, OOF 예측 저장, test 폴드평균 예측 저장
-- 실험 결과는 experiments/logs/<exp_id>.json 으로 구조화 저장
+실행:
+    uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
+    uv run python -m src.train exp_id=exp_002 features=driver_te          # 타깃 인코딩
+    uv run python -m src.train exp_id=exp_003 model.num_leaves=127        # 파라미터 오버라이드
+    uv run python -m src.train -m model.num_leaves=63,127,255             # 스윕(멀티런)
+
+- 튜닝/실험 노브는 conf/ (Hydra), 구조적 상수(경로·컬럼·CV·W&B project)는 src/config.py.
+- fold 별 AUC, OOF 예측, test 폴드평균 예측, JSON 로그, W&B 기록.
 """
 
 from __future__ import annotations
 
-import argparse
 from typing import Any
 
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
+from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import roc_auc_score
 
 from src import config, cv, data, encoders, features, utils
 
-# 베이스라인 LightGBM 파라미터
-# 지표가 ROC-AUC(순위 기반)이므로 클래스 가중은 기본 미사용(is_unbalance=False).
-# 가중 효과는 별도 exp 로 on/off 비교한다.
-BASE_PARAMS: dict[str, Any] = {
-    "objective": "binary",
-    "metric": "auc",
-    "boosting_type": "gbdt",
-    "learning_rate": 0.05,
-    "num_leaves": 63,
-    "feature_fraction": 0.8,
-    "bagging_fraction": 0.8,
-    "bagging_freq": 1,
-    "min_child_samples": 50,
-    "is_unbalance": False,
-    "n_jobs": -1,
-    "seed": config.SEED,
-    "verbose": -1,
-}
-NUM_BOOST_ROUND = 5000
-EARLY_STOPPING = 200
 
-
-def run(
-    exp_id: str,
-    params: dict[str, Any] | None = None,
-    notes: str = "",
-    *,
-    use_wandb: bool = True,
-) -> dict[str, Any]:
+def run(cfg: DictConfig) -> dict[str, Any]:
     """학습/검증/추론 전체 파이프라인을 실행한다.
 
     Args:
-        exp_id: 실험 식별자.
-        params: LightGBM 파라미터 (None 이면 BASE_PARAMS).
-        notes: 실험 메모.
-        use_wandb: True 면 W&B 에 실험을 기록한다 (.env 의 WANDB_API_KEY 사용).
+        cfg: Hydra 설정 (exp_id, notes, use_wandb, model.*, features.*).
 
     Returns:
         cv_mean, cv_std, fold_scores, log_path 를 담은 dict.
     """
     utils.seed_everything(config.SEED)
     utils.load_env()
-    params = params or BASE_PARAMS
+
+    exp_id: str = cfg.exp_id
+    notes: str = cfg.notes
+    use_wandb: bool = cfg.use_wandb
+
+    # 튜닝 노브(Hydra) + 인프라 값(구조적, src.config) 주입
+    lgb_params: dict[str, Any] = {
+        **OmegaConf.to_container(cfg.model.params, resolve=True),
+        "seed": config.SEED,
+        "n_jobs": -1,
+        "verbose": -1,
+    }
+    num_boost_round: int = cfg.model.num_boost_round
+    early_stopping: int = cfg.model.early_stopping
+    te_smoothing: float = cfg.features.target_encode_smoothing
 
     wandb_run = None
     if use_wandb:
@@ -70,7 +59,7 @@ def run(
             entity=config.WANDB_ENTITY,
             name=exp_id,
             notes=notes,
-            config={**params, "cv": f"{config.CV_STRATEGY}_{config.N_FOLDS}", "seed": config.SEED},
+            config=OmegaConf.to_container(cfg, resolve=True),
         )
 
     train_df = features.build_features(data.load_train())
@@ -78,7 +67,7 @@ def run(
     feat_cols = features.get_feature_cols(train_df)
 
     # 타깃 인코딩 대상은 native categorical 에서 제외 (fold-내 OOF 로 float 치환됨)
-    te_cols = [c for c in config.TARGET_ENCODE_COLS if c in feat_cols]
+    te_cols = [c for c in cfg.features.target_encode_cols if c in feat_cols]
     cat_cols = [c for c in config.CATEGORICAL_COLS if c in feat_cols and c not in te_cols]
 
     x = train_df[feat_cols]
@@ -96,7 +85,7 @@ def run(
 
         # ⚠️ 누수 방지: 타깃 인코딩은 fold 의 train 부분으로만 fit (encoders.OOFTargetEncoder).
         if te_cols:
-            enc = encoders.OOFTargetEncoder(te_cols)
+            enc = encoders.OOFTargetEncoder(te_cols, smoothing=te_smoothing)
             x_tr = enc.fit_transform_train(x_tr, y_tr)  # train: 내부 OOF
             x_va = enc.transform(x_va)                  # valid: 전체 train fold 통계
             x_te = enc.transform(x_test)                # test: 전체 train fold 통계
@@ -104,12 +93,12 @@ def run(
         dtrain = lgb.Dataset(x_tr, y_tr, categorical_feature=cat_cols)
         dvalid = lgb.Dataset(x_va, y.iloc[va_idx], categorical_feature=cat_cols)
         model = lgb.train(
-            params,
+            lgb_params,
             dtrain,
-            num_boost_round=NUM_BOOST_ROUND,
+            num_boost_round=num_boost_round,
             valid_sets=[dvalid],
             callbacks=[
-                lgb.early_stopping(EARLY_STOPPING, verbose=False),
+                lgb.early_stopping(early_stopping, verbose=False),
                 lgb.log_evaluation(0),
             ],
         )
@@ -137,10 +126,10 @@ def run(
     te_note = f"target_encode={te_cols}" if te_cols else "no target encoding"
     log_path = utils.log_experiment(
         exp_id=exp_id,
-        model="lgbm",
+        model=cfg.model.name,
         features=feat_cols,
         cv_scores=fold_scores,
-        params=params,
+        params=lgb_params,
         notes=notes or f"OOF AUC={oof_auc:.6f}; {te_note}",
     )
     print(f"로그 저장: {log_path}")
@@ -164,12 +153,24 @@ def run(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="LightGBM 베이스라인 학습")
-    parser.add_argument("--exp-id", required=True, help="실험 식별자 (예: exp_001)")
-    parser.add_argument("--notes", default="", help="실험 메모")
-    parser.add_argument("--no-wandb", action="store_true", help="W&B 기록 비활성화")
-    args = parser.parse_args()
-    run(args.exp_id, notes=args.notes, use_wandb=not args.no_wandb)
+    """CLI 진입점 — Hydra Compose API 로 conf/ 를 합성한다.
+
+    Python 3.14 + Hydra 1.3 의 `@hydra.main` argparse 비호환을 우회한다 (Compose API 사용).
+    ⚠️ 멀티런 스윕(`-m`)은 미지원 → M4 튜닝 단계에서 Python<=3.12(Kaggle=3.11) pin 후
+    `@hydra.main`/Optuna 로 승격 예정.
+
+    사용:
+        python -m src.train exp_id=exp_001 notes="lgbm baseline"
+        python -m src.train exp_id=exp_002 features=driver_te
+        python -m src.train exp_id=exp_003 model.params.num_leaves=127 use_wandb=false
+    """
+    import sys
+
+    from hydra import compose, initialize
+
+    with initialize(version_base=None, config_path="../conf"):
+        cfg = compose(config_name="config", overrides=sys.argv[1:])
+    run(cfg)
 
 
 if __name__ == "__main__":

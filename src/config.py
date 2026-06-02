@@ -1,6 +1,8 @@
-"""프로젝트 전역 설정: 경로, 시드, 컬럼 정의, CV 파라미터.
+"""프로젝트 전역 설정: 경로, 시드, 컬럼 정의, CV 파라미터 (구조적 상수).
 
 모든 모듈은 하드코딩 대신 이 파일의 상수를 참조한다.
+튜닝/스윕 대상 하이퍼파라미터(모델 params, 타깃 인코딩 등)는 여기가 아니라
+`conf/` (Hydra) 에 둔다 — `src/train.py` 참조.
 """
 
 from __future__ import annotations
@@ -28,12 +30,7 @@ TARGET_COL: str = "PitNextLap"
 
 # 고카디널리티 포함 범주형 (LightGBM native categorical 로 처리)
 CATEGORICAL_COLS: list[str] = ["Driver", "Compound", "Race"]
-
-# OOF 타깃 인코딩 대상 (비어 있으면 비활성 → 베이스라인 동작 유지).
-# 여기에 넣은 컬럼은 native categorical 에서 제외되고 fold-내 OOF 인코딩으로 치환된다.
-# 예) 고카디널리티 Driver 활성화: TARGET_ENCODE_COLS = ["Driver"]
-TARGET_ENCODE_COLS: list[str] = []
-TARGET_ENCODE_SMOOTHING: float = 20.0
+# ※ 타깃 인코딩 노브(target_encode_cols/smoothing)는 튜닝 대상 → conf/features/*.yaml (Hydra)
 
 # 저카디널리티 정수형 범주 (범주로 취급 가능)
 CATEGORICAL_INT_COLS: list[str] = ["Year", "PitStop", "Stint"]
