@@ -15,8 +15,17 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 
 from src import config
+
+
+def load_env() -> None:
+    """프로젝트 루트 `.env` 를 환경변수로 로드한다 (W&B/Kaggle 인증).
+
+    이미 설정된 환경변수는 덮어쓰지 않는다.
+    """
+    load_dotenv(config.ROOT_DIR / ".env")
 
 
 def seed_everything(seed: int = config.SEED) -> None:

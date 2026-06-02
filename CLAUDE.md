@@ -57,8 +57,8 @@ data/           # train/test/sample_submission  ← git 제외
 - 이후: XGBoost / CatBoost (GPU, Kaggle) → 스태킹/블렌딩
 
 ## 실험 추적
-- **JSON 로그**: `experiments/logs/<exp_id>.json` (`utils.log_experiment`, 자동) — 기본 채널
-- **W&B**: 🚧 **연동 보류** — 연동 정보(API 키·project/entity) 확보 후 `train.py` 에 추가 예정. 현재는 JSON only.
+- **JSON 로그**: `experiments/logs/<exp_id>.json` (`utils.log_experiment`, 자동)
+- **W&B**: ✅ 연동 완료 — project **`F1-Pit`** (https://wandb.ai/paraise-/F1-Pit). `train.py` 가 fold AUC·params·OOF 를 기록. 인증은 `.env` 의 `WANDB_API_KEY`(`utils.load_env`). 기본 활성, `--no-wandb` 로 끔.
 
 ## 토큰 절약 원칙 (필수 준수)
 - DataFrame 출력은 `.head(5)` / `.shape` / `.dtypes` / `.isnull().sum()` 만 허용

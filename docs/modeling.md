@@ -28,7 +28,7 @@
 
 ## 실험 추적
 - 기본: `experiments/logs/<exp_id>.json` (자동).
-- **W&B**: 🚧 연동 보류 — API 키·project/entity 확보 후 `train.py` 에 추가 예정.
+- **W&B**: ✅ project `F1-Pit`. `train.py` 가 fold AUC·params·OOF 자동 기록. 인증 `.env`(`WANDB_API_KEY`), 기본 활성·`--no-wandb` 로 비활성.
 
 ## 실험 기록
 | exp_id | model | feats | CV AUC | LB | notes |

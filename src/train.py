@@ -39,19 +39,39 @@ NUM_BOOST_ROUND = 5000
 EARLY_STOPPING = 200
 
 
-def run(exp_id: str, params: dict[str, Any] | None = None, notes: str = "") -> dict[str, Any]:
+def run(
+    exp_id: str,
+    params: dict[str, Any] | None = None,
+    notes: str = "",
+    *,
+    use_wandb: bool = True,
+) -> dict[str, Any]:
     """학습/검증/추론 전체 파이프라인을 실행한다.
 
     Args:
         exp_id: 실험 식별자.
         params: LightGBM 파라미터 (None 이면 BASE_PARAMS).
         notes: 실험 메모.
+        use_wandb: True 면 W&B 에 실험을 기록한다 (.env 의 WANDB_API_KEY 사용).
 
     Returns:
         cv_mean, cv_std, fold_scores, log_path 를 담은 dict.
     """
     utils.seed_everything(config.SEED)
+    utils.load_env()
     params = params or BASE_PARAMS
+
+    wandb_run = None
+    if use_wandb:
+        import wandb
+
+        wandb_run = wandb.init(
+            project=config.WANDB_PROJECT,
+            entity=config.WANDB_ENTITY,
+            name=exp_id,
+            notes=notes,
+            config={**params, "cv": f"{config.CV_STRATEGY}_{config.N_FOLDS}", "seed": config.SEED},
+        )
 
     train_df = features.build_features(data.load_train())
     test_df = features.build_features(data.load_test())
@@ -98,6 +118,8 @@ def run(exp_id: str, params: dict[str, Any] | None = None, notes: str = "") -> d
         score = roc_auc_score(y.iloc[va_idx], oof[va_idx])
         fold_scores.append(score)
         print(f"[fold {fold}] AUC = {score:.6f} (best_iter={model.best_iteration})")
+        if wandb_run is not None:
+            wandb_run.log({"fold": fold, "fold_auc": score, "best_iter": model.best_iteration})
 
     oof_auc = roc_auc_score(y, oof)
     print(f"\nOOF AUC = {oof_auc:.6f} | mean={np.mean(fold_scores):.6f} std={np.std(fold_scores):.6f}")
@@ -122,6 +144,17 @@ def run(exp_id: str, params: dict[str, Any] | None = None, notes: str = "") -> d
         notes=notes or f"OOF AUC={oof_auc:.6f}; {te_note}",
     )
     print(f"로그 저장: {log_path}")
+
+    if wandb_run is not None:
+        wandb_run.summary.update(
+            {
+                "oof_auc": oof_auc,
+                "cv_mean": float(np.mean(fold_scores)),
+                "cv_std": float(np.std(fold_scores)),
+            }
+        )
+        wandb_run.finish()
+
     return {
         "cv_mean": float(np.mean(fold_scores)),
         "cv_std": float(np.std(fold_scores)),
@@ -134,8 +167,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="LightGBM 베이스라인 학습")
     parser.add_argument("--exp-id", required=True, help="실험 식별자 (예: exp_001)")
     parser.add_argument("--notes", default="", help="실험 메모")
+    parser.add_argument("--no-wandb", action="store_true", help="W&B 기록 비활성화")
     args = parser.parse_args()
-    run(args.exp_id, notes=args.notes)
+    run(args.exp_id, notes=args.notes, use_wandb=not args.no_wandb)
 
 
 if __name__ == "__main__":

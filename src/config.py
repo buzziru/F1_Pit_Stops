@@ -64,3 +64,8 @@ METRIC: str = "auc"  # ROC-AUC, 제출은 확률값
 
 # ===== Kaggle =====
 COMPETITION: str = "playground-series-s6e5"
+
+# ===== W&B (실험 추적) =====
+# 인증: .env 의 WANDB_API_KEY (utils.load_env 로 로드). 기본 활성, --no-wandb 로 비활성.
+WANDB_PROJECT: str = "F1-Pit"
+WANDB_ENTITY: str | None = None  # None = 로그인 계정 기본 엔티티

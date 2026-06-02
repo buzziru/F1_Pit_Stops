@@ -18,16 +18,18 @@ _최종 갱신: 2026-06-02 (EDA 완료)_
 1. **베이스라인 학습 (#2)** — `uv run python -m src.train --exp-id exp_001` → 기준 OOF AUC + 첫 제출
 2. **Driver 타깃 인코딩 실험 (#3)** — `TARGET_ENCODE_COLS=["Driver"]` 로 exp_002, 베이스라인 대비 비교 (EDA상 native categorical 우선, TE는 비교 실험)
 3. **피처 엔지니어링** — RaceProgress 구간화, LapTime_Delta ablation (`feature-smith` 활용)
-4. **W&B 연동 (#4)** — API 키·project/entity 정보 확보 후 `train.py` 에 추가 (현재 보류)
+4. **`is_stable_delta` 피처 (eda_02)** — `feature-smith` 로 `src/features.py` 추가 (|LapTime_Delta|≤0.3, 피트율 2.6% vs 26.1%)
+
+## ✅ 완료
+- W&B 연동 (#4) — project `F1-Pit`(https://wandb.ai/paraise-/F1-Pit), `train.py` 자동 기록, 인증 `.env`
+- EDA #1, LapTime·열화 심층(eda_02)
 
 ## ⏳ 대기/보류
-- W&B 연동 정보 (사용자 제공 예정)
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈
 - [#2](https://github.com/buzziru/F1_Pit_Stops/issues/2) [exp] LightGBM 베이스라인 exp_001 (M2 Baseline, P1) ← 다음
 - [#3](https://github.com/buzziru/F1_Pit_Stops/issues/3) [exp] Driver OOF 타깃 인코딩 exp_002 (M3, P2)
-- [#4](https://github.com/buzziru/F1_Pit_Stops/issues/4) [infra] W&B 연동 (P2, 보류)
-- ~~#1 EDA~~ ✅ 완료
+- ~~#1 EDA~~ ✅ / ~~#4 W&B~~ ✅ 완료
 
 repo: https://github.com/buzziru/F1_Pit_Stops
