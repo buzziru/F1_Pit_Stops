@@ -11,7 +11,7 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
 - **지표**: ROC-AUC (제출은 **확률값**)
 - **제출**: `id, PitNextLap` / Kaggle CLI
 - **데이터**: train 439,140×16 / test 188,165×15 / 결측치 없음 / 타깃 양성률 19.9%
-- 데이터·컬럼·누수 분석 상세: `docs/setup_questions.md`, `docs/eda.md`
+- 데이터·컬럼·누수 분석 상세: `docs/data_dictionary.md`(컬럼 명세+F1 도메인), `docs/setup_questions.md`, `docs/eda.md`
 
 ## 워크플로우
 1. **EDA**: Jupyter MCP Server, `eda.ipynb` → 결론은 `docs/eda.md` 에 수치 요약으로 정리
