@@ -14,8 +14,12 @@ _최종 갱신: 2026-06-02 (EDA 완료)_
 - Jupyter: `http://127.0.0.1:8888` (.venv 커널, seaborn 포함)
 - 결정 기록: `docs/wiki/decisions.md` (#001~#005)
 
+## 📈 베이스라인 (exp_001) — 기준점
+- **OOF AUC 0.94394 / Public LB 0.94434** (갭 +0.0004 → CV 신뢰, decisions #006)
+- 이후 모든 실험은 이 OOF 0.9439 을 기준으로 비교
+
 ## 🔜 다음 할 일 (우선순위)
-1. **베이스라인 학습 (#2)** — `uv run python -m src.train --exp-id exp_001` → 기준 OOF AUC + 첫 제출
+1. ~~베이스라인 (#2)~~ ✅ 완료 (제출까지)
 2. **Driver 타깃 인코딩 실험 (#3)** — `TARGET_ENCODE_COLS=["Driver"]` 로 exp_002, 베이스라인 대비 비교 (EDA상 native categorical 우선, TE는 비교 실험)
 3. **피처 엔지니어링** — RaceProgress 구간화, LapTime_Delta ablation (`feature-smith` 활용)
 4. **`is_stable_delta` 피처 (eda_02)** — `feature-smith` 로 `src/features.py` 추가 (|LapTime_Delta|≤0.3, 피트율 2.6% vs 26.1%)
@@ -28,8 +32,7 @@ _최종 갱신: 2026-06-02 (EDA 완료)_
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈
-- [#2](https://github.com/buzziru/F1_Pit_Stops/issues/2) [exp] LightGBM 베이스라인 exp_001 (M2 Baseline, P1) ← 다음
 - [#3](https://github.com/buzziru/F1_Pit_Stops/issues/3) [exp] Driver OOF 타깃 인코딩 exp_002 (M3, P2)
-- ~~#1 EDA~~ ✅ / ~~#4 W&B~~ ✅ 완료
+- ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#4 W&B~~ ✅ 완료
 
 repo: https://github.com/buzziru/F1_Pit_Stops
