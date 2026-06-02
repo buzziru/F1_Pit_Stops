@@ -14,6 +14,7 @@
 - [`decisions.md`](decisions.md) — 의사결정 기록 (ADR-lite). 왜 그렇게 정했는지.
 - `experiments/` — 주요 실험 회고 (가설 → 결과 → 결론). exp 단위로 추가.
   - [`exp_002_003_is_stable_delta.md`](experiments/exp_002_003_is_stable_delta.md) — is_stable_delta ablation (기각): 낮은 corr≠무용, 이진화 정보손실
+  - [`exp_004_driver_te.md`](experiments/exp_004_driver_te.md) — Driver OOF 타깃 인코딩 (채택, +0.00559): 고카디널리티는 OOF TE > native cat
 - `domain/` — F1 피트전략 등 도메인 지식 메모.
 
 ## 작성 규칙

@@ -2,7 +2,7 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-02 (exp_001 베이스라인 + is_stable_delta ablation 기각)_
+_최종 갱신: 2026-06-02 (exp_004 Driver OOF TE 채택, OOF 0.9495)_
 
 ## 🟢 현재 상태
 - 프로젝트 골격 완성: `src/`(config·data·features·cv·train·predict·utils·encoders·eda_utils), `docs/`, `experiments/`, `pyproject.toml`, `.gitignore`
@@ -14,19 +14,22 @@ _최종 갱신: 2026-06-02 (exp_001 베이스라인 + is_stable_delta ablation �
 - Jupyter: `http://127.0.0.1:8888` (.venv 커널, seaborn 포함)
 - 결정 기록: `docs/wiki/decisions.md` (#001~#008), 실험 회고: `docs/wiki/experiments/`
 
-## 📈 베이스라인 (exp_001) — 기준점
-- **OOF AUC 0.94394 / Public LB 0.94434** (갭 +0.0004 → CV 신뢰, decisions #006)
-- 이후 모든 실험은 이 OOF 0.9439 을 기준으로 비교
+## 📈 현재 최고 (exp_004) — 기준점
+- **exp_004 Driver OOF TE: OOF AUC 0.94952** (std 0.00067) — baseline 0.94394 대비 **Δ +0.00559** 채택. LB 미제출(TBD).
+- 직전 베이스라인 exp_001: OOF 0.94394 / Public LB 0.94434 (갭 +0.0004 → CV 신뢰, decisions #006)
+- 이후 실험은 **exp_004(0.9495)** 를 기준으로 비교
 
 ## 🔜 다음 할 일 (우선순위)
-1. **Driver OOF 타깃 인코딩 (#3)** — `uv run python -m src.train exp_id=exp_004 features=driver_te` → baseline(0.9439) 대비 비교 (EDA상 native categorical 우선, TE는 비교 실험)
-2. **피처 엔지니어링** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
-3. (M4) Optuna sweeper로 하이퍼파라미터 튜닝
+1. **exp_004 Kaggle 제출** — `experiments/submissions/exp_004.csv` 제출 → LB 확인(OOF≈LB 재검증, +0.0056 개선폭이 LB에도 반영되는지)
+2. **추가 인코딩 실험** — `Race`/`Compound` OOF TE 추가 (`conf/features` 새 그룹), Driver TE 와 조합 → OOF 비교
+3. **피처 엔지니어링** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
+4. (M4) Optuna sweeper로 하이퍼파라미터 튜닝
 
 ## ✅ 완료
 - 베이스라인 exp_001 (#2, 제출까지) / W&B 연동 (#4, `F1-Pit`) / EDA #1 + LapTime·열화 심층(eda_02)
 - Hydra 설정 분리(#007) + Python 3.11 pin(#008)
 - **is_stable_delta ablation (exp_002/003) → 기각** — 회고: `docs/wiki/experiments/exp_002_003_is_stable_delta.md`
+- **Driver OOF TE (exp_004, #3) → 채택** (OOF 0.94952, Δ+0.00559)
 
 ## 🛠️ 설정 관리 (Hydra) + 환경
 - 튜닝/실험 노브 → `conf/`(Hydra), 구조적 상수 → `src/config.py`
@@ -39,7 +42,7 @@ _최종 갱신: 2026-06-02 (exp_001 베이스라인 + is_stable_delta ablation �
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈
-- [#3](https://github.com/buzziru/F1_Pit_Stops/issues/3) [exp] Driver OOF 타깃 인코딩 → exp_004 (`features=driver_te`) (M3, P2) ← 다음
-- ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#4 W&B~~ ✅ / ~~#5 is_stable_delta ablation~~ ✅(기각)
+- (없음 — 다음 작업은 위 "다음 할 일"에서 이슈화)
+- ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#3 Driver OOF TE(exp_004)~~ ✅(채택) / ~~#4 W&B~~ ✅ / ~~#5 is_stable_delta ablation~~ ✅(기각)
 
 repo: https://github.com/buzziru/F1_Pit_Stops
