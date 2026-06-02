@@ -28,13 +28,14 @@ _최종 갱신: 2026-06-02 (EDA 완료)_
 - W&B 연동 (#4) — project `F1-Pit`(https://wandb.ai/paraise-/F1-Pit), `train.py` 자동 기록, 인증 `.env`
 - EDA #1, LapTime·열화 심층(eda_02)
 
-## 🛠️ 설정 관리 (Hydra)
+## 🛠️ 설정 관리 (Hydra) + 환경
 - 튜닝/실험 노브 → `conf/`(Hydra), 구조적 상수 → `src/config.py`
-- 실행: `uv run python -m src.train exp_id=... [features=driver_te] [model.params.num_leaves=127] [use_wandb=false]`
-- ⚠️ Python 3.14 + Hydra 1.3 비호환 → `@hydra.main` 대신 Compose API (멀티런 `-m` 미지원)
+- 실행: `uv run python -m src.train exp_id=... [features=driver_te] [model.params.num_leaves=127] [use_wandb=false]`, 멀티런 `-m ...=a,b`
+- **Python 3.11 pin** 완료 (`.python-version`, Kaggle 동일). `@hydra.main` 정상.
+- ⚠️ `.venv` 가 3.11 로 재생성됨 → **Jupyter 서버(8888) 재시작 필요**: `uv run jupyter lab --port 8889 --IdentityProvider.token BLOCK --ip 0.0.0.0 --no-browser`
 
 ## ⏳ 대기/보류
-- **Python 3.11 pin (Kaggle 동일)** — M4 튜닝 전. 그러면 `@hydra.main`+멀티런/Optuna 스윕 가능. (현 .venv=3.14, Jupyter 서버도 3.14라 재생성 시 서버 재시작 필요)
+- M4 튜닝 시 Optuna sweeper(hydra-optuna-sweeper) 추가
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈

@@ -45,4 +45,4 @@ kaggle competitions submit -c playground-series-s6e5 \
 ```
 
 > 설정 분리: 튜닝/실험 노브(모델 params, 타깃 인코딩)는 `conf/`(Hydra), 구조적 상수는 `src/config.py`.
-> ⚠️ 현 Python 3.14 + Hydra 1.3 비호환으로 `@hydra.main` 대신 Compose API 사용 → 멀티런 `-m` 미지원. M4 튜닝 전 Python 3.11(Kaggle 동일) pin 후 `@hydra.main`/Optuna 승격 예정.
+> Python **3.11 pin**(Kaggle 노트북과 동일, `.python-version`). `@hydra.main` 사용 → 멀티런 `-m` 지원. Optuna sweeper 는 M4 튜닝에서 추가.

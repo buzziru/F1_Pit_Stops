@@ -3,8 +3,8 @@
 실행:
     uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
     uv run python -m src.train exp_id=exp_002 features=driver_te          # 타깃 인코딩
-    uv run python -m src.train exp_id=exp_003 model.num_leaves=127        # 파라미터 오버라이드
-    uv run python -m src.train -m model.num_leaves=63,127,255             # 스윕(멀티런)
+    uv run python -m src.train exp_id=exp_003 model.params.num_leaves=127  # 파라미터 오버라이드
+    uv run python -m src.train -m model.params.num_leaves=63,127,255       # 스윕(멀티런)
 
 - 튜닝/실험 노브는 conf/ (Hydra), 구조적 상수(경로·컬럼·CV·W&B project)는 src/config.py.
 - fold 별 AUC, OOF 예측, test 폴드평균 예측, JSON 로그, W&B 기록.
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import hydra
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -152,24 +153,8 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     }
 
 
-def main() -> None:
-    """CLI 진입점 — Hydra Compose API 로 conf/ 를 합성한다.
-
-    Python 3.14 + Hydra 1.3 의 `@hydra.main` argparse 비호환을 우회한다 (Compose API 사용).
-    ⚠️ 멀티런 스윕(`-m`)은 미지원 → M4 튜닝 단계에서 Python<=3.12(Kaggle=3.11) pin 후
-    `@hydra.main`/Optuna 로 승격 예정.
-
-    사용:
-        python -m src.train exp_id=exp_001 notes="lgbm baseline"
-        python -m src.train exp_id=exp_002 features=driver_te
-        python -m src.train exp_id=exp_003 model.params.num_leaves=127 use_wandb=false
-    """
-    import sys
-
-    from hydra import compose, initialize
-
-    with initialize(version_base=None, config_path="../conf"):
-        cfg = compose(config_name="config", overrides=sys.argv[1:])
+@hydra.main(version_base=None, config_path="../conf", config_name="config")
+def main(cfg: DictConfig) -> None:
     run(cfg)
 
 

@@ -2,10 +2,16 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [008] Python 3.11 pin (Kaggle 동일) — 2026-06-02
+- **결정**: 프로젝트 Python 을 **3.11** 로 고정 (`.python-version`, `requires-python>=3.11,<3.13`). `.venv` 재생성.
+- **이유**: 초기 uv 가 최신 3.14 를 자동 선택 → Hydra `@hydra.main` 등 비호환·생태계 불안정. Kaggle 노트북이 3.11 이라 **이관 재현성**에도 유리.
+- **확인**: 베이스라인 exp_001 결과(OOF 0.9439, LB 0.94434)는 3.14 에서 산출됐으나 결과 자체엔 문제 없었음(EDA·훈련 동일 .venv 사용). 3.11 재생성 후 라이브러리 버전 동일(pandas 3.0.3, lightgbm 4.6).
+- **트레이드오프**: `.venv` 재생성 시 Jupyter 서버(8888) 재시작 필요 (`uv run jupyter lab ...`).
+
 ## [007] 설정 분리: 구조적=config.py, 튜닝 노브=Hydra — 2026-06-02
-- **결정**: 경로·컬럼·CV·W&B project 등 구조적 상수는 `src/config.py` 유지, 모델 params·타깃 인코딩 등 튜닝/스윕 노브는 `conf/`(Hydra)로 이동. `train.py` 는 Hydra Compose API 로 합성.
-- **이유**: 실험/스윕 노브를 한 곳에 모으고 CLI 오버라이드·config 그룹 제공. M4 튜닝에서 Optuna 스윕으로 확장 대비.
-- **트레이드오프**: Python 3.14 + Hydra 1.3 의 `@hydra.main` argparse 비호환 → Compose API 우회(멀티런 `-m` 미지원). M4 전 Python 3.11(Kaggle 동일) pin 후 `@hydra.main`/Optuna 승격 예정.
+- **결정**: 경로·컬럼·CV·W&B project 등 구조적 상수는 `src/config.py` 유지, 모델 params·타깃 인코딩 등 튜닝/스윕 노브는 `conf/`(Hydra)로 이동. `train.py` 는 `@hydra.main` 사용.
+- **이유**: 실험/스윕 노브를 한 곳에 모으고 CLI 오버라이드·config 그룹·멀티런(`-m`) 제공. M4 튜닝에서 Optuna sweeper 로 확장 대비.
+- **트레이드오프/메모**: 초기 `.venv` 가 Python 3.14(uv 자동 최신 선택)라 `@hydra.main` argparse 가 깨졌음 → **Python 3.11 pin**(`.python-version`, Kaggle 동일)으로 `.venv` 재생성해 해결. requires-python `>=3.11,<3.13`. (참고 [008])
 
 ## [006] OOF 를 1차 판단 기준으로 신뢰 — 2026-06-02
 - **결정**: 실험 비교는 OOF AUC 기준으로 진행하고, Kaggle 제출은 마일스톤/큰 변화 시에만 한다.
