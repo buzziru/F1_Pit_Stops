@@ -12,6 +12,7 @@
 
 ## 후보 피처 (EDA 결과 반영 예정)
 ### 정적 (build_features 에서 바로 생성 가능)
+- [~] `is_stable_delta` = `(|LapTime_Delta| <= 0.3)` int8. **시도→기각** (exp_002 Δ−0.00024, 트리에 raw 중복)
 - [ ] `TyreLife` 관련 비율 (`TyreLife / LapNumber`, 스틴트 진행도)
 - [ ] `Compound` × `TyreLife` 상호작용
 - [ ] `RaceProgress` 구간화
@@ -36,3 +37,7 @@
 | exp_id | 추가 피처 | OOF AUC | 비고 |
 |---|---|---|---|
 | exp_001 | (baseline) | 0.943936 | 원본 14컬럼, std 0.00075 |
+| exp_002 | +`is_stable_delta` | 0.943709 | **Δ −0.00024 (노이즈 내, 기각)** — 트리가 raw LapTime_Delta로 동일 분할을 이미 학습 → 중복 |
+| exp_003 | −`LapTime_Delta` +`is_stable_delta` | 0.942346 | **Δ −0.00160 (std 2배, 기각)** — raw 제거가 실질 하락 → raw LapTime_Delta 가 트리에 유용(비선형). 이진 교체는 정보 손실. **코드는 baseline 으로 되돌림** |
+
+> 📌 학습: 낮은 선형 상관(corr −0.005)이 트리 무용을 뜻하지 않음. EDA 표면 신호(2.6% vs 26.1%)는 raw 가 이미 담고 있던 정보. is_stable_delta 는 채택 안 함.

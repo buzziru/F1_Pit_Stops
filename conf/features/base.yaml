@@ -1,3 +1,4 @@
 # 베이스라인 피처 설정 (원본 컬럼만, 타깃 인코딩 비활성).
 target_encode_cols: []      # 비우면 native categorical 유지
 target_encode_smoothing: 20.0
+drop_cols: []               # 모델 입력에서 제외할 컬럼 (ablation 용)

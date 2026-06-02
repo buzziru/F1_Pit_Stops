@@ -67,6 +67,10 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     test_df = features.build_features(data.load_test())
     feat_cols = features.get_feature_cols(train_df)
 
+    # ablation: conf/features 의 drop_cols 에 지정된 컬럼은 모델 입력에서 제외
+    drop_cols = list(cfg.features.drop_cols)
+    feat_cols = [c for c in feat_cols if c not in drop_cols]
+
     # 타깃 인코딩 대상은 native categorical 에서 제외 (fold-내 OOF 로 float 치환됨)
     te_cols = [c for c in cfg.features.target_encode_cols if c in feat_cols]
     cat_cols = [c for c in config.CATEGORICAL_COLS if c in feat_cols and c not in te_cols]

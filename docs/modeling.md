@@ -34,6 +34,8 @@
 | exp_id | model | feats | CV AUC | LB | notes |
 |---|---|---|---|---|---|
 | exp_001 | lgbm | baseline(14) | **0.943936** | **0.94434** | OOF≈LB(갭+0.0004) → CV 신뢰. std 0.00075, best_iter~677 |
+| exp_002 | lgbm | +is_stable_delta(15) | 0.943709 | - | Δ−0.00024(노이즈 내) → **기각**(추가 무효, 트리가 raw로 중복 학습) |
+| exp_003 | lgbm | −LapTime_Delta +is_stable_delta(14) | 0.942346 | - | Δ−0.00160(std 2배) → **기각**. raw LapTime_Delta 유용(비선형), 이진 교체는 정보 손실 |
 
 ## 제출 절차
 ```bash
