@@ -33,7 +33,7 @@
 ## 실험 기록
 | exp_id | model | feats | CV AUC | LB | notes |
 |---|---|---|---|---|---|
-| exp_001 | lgbm | baseline | TBD | - | 원본 컬럼, is_unbalance=False |
+| exp_001 | lgbm | baseline(14) | **0.943936** | - | OOF std 0.00075, best_iter~677, is_unbalance=False |
 
 ## 제출 절차
 ```bash
