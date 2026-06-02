@@ -37,7 +37,7 @@
 
 ## 제출 절차
 ```bash
-uv run python -m src.train exp_id=exp_XXX notes="..."   # Hydra: features=driver_te, model.params.* 오버라이드 가능
+uv run python -m src.train exp_id=exp_XXX "notes='...'"   # Hydra: features=driver_te, model.params.* 오버라이드 (notes 특수문자는 작은따옴표)
 set -a; . ./.env; set +a
 kaggle competitions submit -c playground-series-s6e5 \
   -f experiments/submissions/exp_XXX.csv -m "exp_XXX ..."

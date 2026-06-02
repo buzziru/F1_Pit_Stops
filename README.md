@@ -51,7 +51,7 @@ kaggle competitions download -c playground-series-s6e5 -p data/ && \
   unzip -o data/*.zip -d data/ && rm data/*.zip
 
 # 학습 (Hydra 설정 기반: OOF + 제출파일 + JSON 로그 + W&B)
-uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
+uv run python -m src.train exp_id=exp_001 "notes='lgbm baseline'"   # notes 공백/특수문자는 작은따옴표 필요
 #  타깃 인코딩: features=driver_te / 파라미터: model.params.num_leaves=127 / W&B off: use_wandb=false
 
 # 제출

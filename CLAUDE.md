@@ -15,6 +15,7 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
 
 ## 워크플로우
 1. **EDA**: Jupyter MCP Server, **주제별 노트북 `notebooks/eda_<NN>_<주제>.ipynb`** → 결론은 `docs/eda.md` 에 수치 요약으로 정리
+   - ⚠️ EDA 전 **`.venv` 커널 Jupyter 서버 필요** (seaborn 등 포함): `uv run jupyter lab --port 8888 --IdentityProvider.token BLOCK --ip 0.0.0.0 --no-browser`, MCP는 `http://127.0.0.1:8888` (끝 슬래시 없이) 로 연결
 2. **피처/모델링**: `src/` 중심 `.py` 작업
 3. **실행**:
    - **베이스라인·중간 실험은 로컬**에서 `.py` 중심 (`python -m src.train`)
@@ -22,10 +23,19 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
    - ⚠️ Kaggle 은 노트북 환경이므로 `src/` 코드를 **`.ipynb` 로 변환**해 올려야 한다 (또는 `src/` 를 Kaggle Dataset 으로 push 후 import). 변환 시점·방법은 그때 별도 정리.
 4. **실험 결과**: `experiments/logs/<exp_id>.json` 구조화 로그 (+ W&B 는 아래 "실험 추적" 참조)
 
+## 서브에이전트 & 의사결정 기록
+- 커스텀 에이전트 (`.claude/agents/`, git 추적):
+  - `eda-explorer` — read-only EDA. 주제별 노트북 생성, 수치 요약만 리턴 (토큰 절약)
+  - `feature-smith` — `src/features.py` 피처 구현 + 누수 검증 + OOF 측정 (**동시 1개만**)
+  - `kaggle-researcher` — 대회/F1 도메인 리서치
+- 학습 루프·실험 비교·최종 판단은 **메인에서 순차** (동일 fold/seed 보장). 에이전트는 격리형 탐색/검증에만.
+- **주요 결정 근거는 `docs/wiki/decisions.md`(ADR-lite) 참조** — 새 결정 시 추가.
+
 ## 프로젝트 구조
 ```
 CLAUDE.md         # 이 문서 (프로젝트 가이드)
 pyproject.toml    # uv 의존성 (base / eda / gpu)
+.python-version   # Python 3.11 고정 (Kaggle 동일)
 .gitignore        # .env·data·산출물 제외
 .env              # Kaggle/W&B 인증 (git 제외)
 conf/             # Hydra 설정 — 튜닝/실험 노브 (config.yaml, model/, features/)
@@ -50,6 +60,7 @@ data/           # train/test/sample_submission  ← git 제외
 - ⚠️ train/test 가 동일 `(Race,Year,Driver)` 그룹을 공유하는 **row-level split** 이므로
   GroupKFold 불필요. StratifiedKFold 가 대회 셋업과 일치.
 - 모든 모델 비교는 **동일 fold(동일 seed)** 기준 OOF AUC 로 한다.
+- **OOF≈LB 검증됨** (exp_001: OOF 0.9439 vs Public LB 0.9443, 갭 +0.0004) → OOF 를 1차 기준으로 신뢰하고 제출은 마일스톤·큰 변화 시에만 (decisions #006).
 
 ## 모델링
 - 베이스라인: **LightGBM (CPU, 로컬)**. native categorical: `Driver, Compound, Race`
@@ -68,7 +79,7 @@ data/           # train/test/sample_submission  ← git 제외
 - EDA 플롯은 `plt.show()` 로 노트북에 남기되 **작게**(figsize≤8×4, dpi 72, `eda_utils.setup_eda_style()` 기본) → 인라인 이미지 토큰 절약. 핵심만 그리고 개수 절제.
 
 ## 코딩 컨벤션
-- Python ≥ 3.11, 의존성 관리 **`uv`**
+- **Python 3.11 고정** (`.python-version`, Kaggle 노트북과 동일). ⚠️ uv 가 최신(3.14 등)을 잡으면 Hydra `@hydra.main` 등이 깨지므로 pin 유지 (decisions #008). 의존성 관리 **`uv`** (`uv sync` / `uv run`)
 - **타입힌트 필수**, **Google 스타일 docstring**, 함수당 ~50줄 권장
 - 하드코딩 금지 — 경로/시드/컬럼은 `src/config.py` 참조
 - **재현성**: 모든 실험은 `seed_everything()` + 커밋 해시 로깅(`utils.log_experiment` 자동 기록)
@@ -79,7 +90,8 @@ data/           # train/test/sample_submission  ← git 제외
 uv sync                      # 또는 uv sync --extra eda / --extra gpu
 
 # 학습 (Hydra 설정 기반 — OOF + 제출 파일 + JSON 로그 + W&B)
-uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
+uv run python -m src.train exp_id=exp_001 "notes='lgbm baseline'"
+#  ⚠️ notes 에 공백/특수문자가 있으면 Hydra 문법상 작은따옴표로 감싼다: "notes='...'"
 #  파라미터 오버라이드:  ... exp_id=exp_003 model.params.num_leaves=127
 #  타깃 인코딩:          ... exp_id=exp_002 features=driver_te
 #  W&B 끄기:             ... use_wandb=false

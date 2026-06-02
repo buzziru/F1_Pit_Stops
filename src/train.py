@@ -1,7 +1,7 @@
 """LightGBM 학습 루프 (StratifiedKFold OOF) — Hydra 설정 기반.
 
 실행:
-    uv run python -m src.train exp_id=exp_001 notes="lgbm baseline"
+    uv run python -m src.train exp_id=exp_001 "notes='lgbm baseline'"   # notes 특수문자는 작은따옴표
     uv run python -m src.train exp_id=exp_002 features=driver_te          # 타깃 인코딩
     uv run python -m src.train exp_id=exp_003 model.params.num_leaves=127  # 파라미터 오버라이드
     uv run python -m src.train -m model.params.num_leaves=63,127,255       # 스윕(멀티런)
