@@ -23,4 +23,9 @@ _최종 갱신: 2026-06-02_
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈
-- (GitHub 설정 후 채움)
+- [#1](https://github.com/buzziru/F1_Pit_Stops/issues/1) [eda] docs/eda.md 체크리스트 (M1 EDA, P1)
+- [#2](https://github.com/buzziru/F1_Pit_Stops/issues/2) [exp] LightGBM 베이스라인 exp_001 (M2 Baseline, P1)
+- [#3](https://github.com/buzziru/F1_Pit_Stops/issues/3) [exp] Driver OOF 타깃 인코딩 exp_002 (M3, P2)
+- [#4](https://github.com/buzziru/F1_Pit_Stops/issues/4) [infra] W&B 연동 (P2, 보류)
+
+repo: https://github.com/buzziru/F1_Pit_Stops
