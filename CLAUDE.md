@@ -14,7 +14,7 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
 - 데이터·컬럼·누수 분석 상세: `docs/data_dictionary.md`(컬럼 명세+F1 도메인), `docs/setup_questions.md`, `docs/eda.md`
 
 ## 워크플로우
-1. **EDA**: Jupyter MCP Server, `eda.ipynb` → 결론은 `docs/eda.md` 에 수치 요약으로 정리
+1. **EDA**: Jupyter MCP Server, **주제별 노트북 `notebooks/eda_<NN>_<주제>.ipynb`** → 결론은 `docs/eda.md` 에 수치 요약으로 정리
 2. **피처/모델링**: `src/` 중심 `.py` 작업
 3. **실행**:
    - **베이스라인·중간 실험은 로컬**에서 `.py` 중심 (`python -m src.train`)
@@ -38,7 +38,8 @@ src/
   predict.py    # 제출 헬퍼
   utils.py      # 시드 고정, git 해시, JSON 로거, resumetable 요약
   eda_utils.py  # EDA 스타일·플롯 헬퍼 (seaborn, --extra eda)
-docs/           # eda.md, feature_engineering.md, modeling.md, setup_questions.md
+docs/           # data_dictionary, eda, feature_engineering, modeling, setup_questions, wiki/
+notebooks/      # 주제별 EDA 노트북 (eda_<NN>_<주제>.ipynb)
 experiments/    # logs/ (JSON), oof/, submissions/  ← 내용물은 git 제외
 data/           # train/test/sample_submission  ← git 제외
 ```

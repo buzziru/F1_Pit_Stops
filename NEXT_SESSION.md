@@ -10,7 +10,7 @@ _최종 갱신: 2026-06-02 (EDA 완료)_
 - 확정 설계: StratifiedKFold 5-fold, LightGBM CPU 베이스라인, `is_unbalance=False`
 - **누수 방지 OOF 타깃 인코딩 구현 완료** (`src/encoders.py`, `config.TARGET_ENCODE_COLS` 로 활성화, 기본 비활성)
 - 커스텀 서브에이전트 3종 (`.claude/agents/`, git 추적): `eda-explorer`, `feature-smith`, `kaggle-researcher`
-- **EDA 완료 (#1 종료)** — `eda.ipynb`(37셀), 결과는 `docs/eda.md`. 핵심: 드리프트 없음(adv AUC 0.5012), 피처 우선순위 TyreLife·LapNumber·Stint·Compound·RaceProgress, 파생피처 누수 증거 없음(LapTime_Delta 예측력 의문)
+- **EDA 완료 (#1 종료)** — `notebooks/eda_01_checklist.ipynb`(37셀), 결과는 `docs/eda.md`. 추가 EDA는 주제별 `notebooks/eda_<NN>_<주제>.ipynb` 로 분리 생성. 핵심: 드리프트 없음(adv AUC 0.5012), 피처 우선순위 TyreLife·LapNumber·Stint·Compound·RaceProgress, 파생피처 누수 증거 없음(LapTime_Delta 예측력 의문)
 - Jupyter: `http://127.0.0.1:8888` (.venv 커널, seaborn 포함)
 - 결정 기록: `docs/wiki/decisions.md` (#001~#005)
 
