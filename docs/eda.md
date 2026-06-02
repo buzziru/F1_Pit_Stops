@@ -44,8 +44,15 @@
   - RaceProgress: 40~60% 구간 36.9% (피트 윈도우 집중), 초반 8.6%·후반 11.2%
 - **Driver(887)**: test Driver 801개 전원 train 존재 (coverage 100%), train only 86개. 양성률 std=0.099 → native categorical 우선, OOF TE와 실험 비교(exp_002 vs exp_003)
 - **train/test 드리프트**: Adversarial AUC=0.5012 (seed=42) → 드리프트 없음, StratifiedKFold 유효
-- **파생피처 누수**: shift 재현 불가(corr<0.25), 미래 누수 직접 증거 없음. `LapTime_Delta` 예측력 낮음(corr-0.005) → ablation 모니터링
+- **파생피처 누수**: shift 재현 불가(corr<0.25), 미래 누수 직접 증거 없음. `LapTime_Delta` raw corr=-0.005로 낮지만 **|delta|≤0.3 안정 구간 피트율 2.6% vs 나머지 26.1%** (W자 비선형) → 이진/구간 피처로 변환 시 강력. `Cumulative_Degradation`: 10분위 단조성 corr=-0.83, <-50(피트 직후) 27.9% / -5~0 11.7%. 둘 다 구간화 가치 있음. (eda_02)
+
+## 6. LapTime·열화 심층 (2026-06-02, eda_02)
+- **retire(DNF) 판별**: 명시적 라벨 없음. DNF 프록시(MaxRP<0.85 등) 기준, 세 변수의 효과크기 작음(rank-biserial 최대 0.19=LapTime_Delta, Cumulative_Degradation rbc=-0.11). **세 변수만으로 retire 이진 판별은 불충분**. Degradation 극단(>50)이 그나마 신호. row-level split + 합성데이터로 프록시 노이즈 큼 → DNF 피처는 보류, `is_last_lap_in_group` 정도만 안전.
+- **구간화 vs 타깃**:
+  - `LapTime_Delta`: **W자(비단조)**. `|delta|≤0.3`=2.6%, 그 외=26.1% (10배). 10분위 spread 0.279
+  - `Cumulative_Degradation`: 단조 corr=-0.83 (가장 강한 단조 신호). 단 Stint/TyreLife와 공선성 주의
+  - `LapTime (s)`: spread 0.147, 단조 corr=-0.48, 이상치 구간 특별 신호 없음 (약함)
 
 ### 피처 우선순위 (모델링 반영)
 
-TyreLife · LapNumber · Stint · Compound · RaceProgress(구간화 후보). `LapTime_Delta` 는 ablation 으로 유지/제거 판단.
+TyreLife · LapNumber · Stint · Compound · RaceProgress(구간화 후보). **`is_stable_delta`(|LapTime_Delta|≤0.3 이진): 피트율 2.6% vs 26.1% — feature-smith 1순위 후보.** `Cumulative_Degradation` 구간/클리핑 피처도 ablation 가치. `LapTime (s)` 단독은 약함.
