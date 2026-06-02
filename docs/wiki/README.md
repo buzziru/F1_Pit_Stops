@@ -13,6 +13,7 @@
 ## 위키 구성
 - [`decisions.md`](decisions.md) — 의사결정 기록 (ADR-lite). 왜 그렇게 정했는지.
 - `experiments/` — 주요 실험 회고 (가설 → 결과 → 결론). exp 단위로 추가.
+  - [`exp_002_003_is_stable_delta.md`](experiments/exp_002_003_is_stable_delta.md) — is_stable_delta ablation (기각): 낮은 corr≠무용, 이진화 정보손실
 - `domain/` — F1 피트전략 등 도메인 지식 메모.
 
 ## 작성 규칙
