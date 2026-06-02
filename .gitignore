@@ -38,7 +38,8 @@ wandb/
 .npm/
 .ipython/
 .jupyter
-.claude/
+.claude/*
+!.claude/agents/
 .claude.json
 .lightning_studio/
 .condarc

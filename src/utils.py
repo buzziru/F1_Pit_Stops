@@ -101,17 +101,22 @@ def log_experiment(
     return path
 
 
-def summarize_df(df: pd.DataFrame, name: str = "df") -> None:
-    """DataFrame 을 토큰 절약 규칙에 맞게 요약 출력한다.
+def resumetable(df: pd.DataFrame) -> pd.DataFrame:
+    """DataFrame 요약 테이블을 반환한다 (토큰 절약용 핵심 메타).
 
-    .head(5) / .shape / .dtypes / .isnull().sum() 만 출력한다.
+    피처별 데이터타입·결측값 수·고유값 수와 샘플값(첫/둘째)을 한 표로 정리한다.
+    전체 출력 대신 이 표 하나로 데이터 개요를 파악한다.
 
     Args:
         df: 요약할 DataFrame.
-        name: 출력 라벨.
+
+    Returns:
+        피처별 요약 행을 담은 DataFrame (피처, 데이터타입, 결측값 개수, 고유값 개수, 샘플값).
     """
-    print(f"===== {name} =====")
-    print("shape:", df.shape)
-    print("\ndtypes:\n", df.dtypes)
-    print("\nisnull().sum():\n", df.isnull().sum())
-    print("\nhead(5):\n", df.head(5))
+    summary = pd.DataFrame(df.dtypes, columns=["데이터타입"])
+    summary = summary.reset_index().rename(columns={"index": "피처"})
+    summary["결측값 개수"] = df.isnull().sum().values
+    summary["고유값 개수"] = df.nunique().values
+    summary["첫번째 값"] = df.iloc[0].values if len(df) > 0 else None
+    summary["두번째 값"] = df.iloc[1].values if len(df) > 1 else None
+    return summary

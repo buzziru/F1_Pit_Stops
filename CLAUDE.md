@@ -32,10 +32,12 @@ src/
   config.py     # 경로, 시드, 컬럼 정의, CV 파라미터 (단일 진실 공급원)
   data.py       # 로드/IO (범주형 category 변환)
   features.py   # 피처 엔지니어링 (train/test 공통 적용)
+  encoders.py   # 누수 방지 OOF 타깃 인코딩
   cv.py         # StratifiedKFold 분할
   train.py      # LightGBM 학습 루프 + OOF + 로깅
   predict.py    # 제출 헬퍼
-  utils.py      # 시드 고정, git 해시, JSON 로거, df 요약
+  utils.py      # 시드 고정, git 해시, JSON 로거, resumetable 요약
+  eda_utils.py  # EDA 스타일·플롯 헬퍼 (seaborn, --extra eda)
 docs/           # eda.md, feature_engineering.md, modeling.md, setup_questions.md
 experiments/    # logs/ (JSON), oof/, submissions/  ← 내용물은 git 제외
 data/           # train/test/sample_submission  ← git 제외
@@ -59,7 +61,7 @@ data/           # train/test/sample_submission  ← git 제외
 
 ## 토큰 절약 원칙 (필수 준수)
 - DataFrame 출력은 `.head(5)` / `.shape` / `.dtypes` / `.isnull().sum()` 만 허용
-  (→ `utils.summarize_df()` 사용)
+  (→ `utils.resumetable(df)` 요약 표 사용)
 - 플롯은 **EDA 단계에서만** 생성, 이후엔 수치 요약으로 대체
 - 플롯 생성 후 **즉시 `plt.close()`** 호출
 
