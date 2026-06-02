@@ -39,7 +39,7 @@ _최종 갱신: 2026-06-02 (exp_001 베이스라인 + is_stable_delta ablation �
 - Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
 
 ## 🔗 열린 이슈
-- [#3](https://github.com/buzziru/F1_Pit_Stops/issues/3) [exp] Driver OOF 타깃 인코딩 → exp_004 (`features=driver_te`) (M3, P2)
-- ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#4 W&B~~ ✅ 완료
+- [#3](https://github.com/buzziru/F1_Pit_Stops/issues/3) [exp] Driver OOF 타깃 인코딩 → exp_004 (`features=driver_te`) (M3, P2) ← 다음
+- ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#4 W&B~~ ✅ / ~~#5 is_stable_delta ablation~~ ✅(기각)
 
 repo: https://github.com/buzziru/F1_Pit_Stops
