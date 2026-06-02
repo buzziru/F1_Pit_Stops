@@ -1,0 +1,33 @@
+[project]
+name = "kaggle-s6e5"
+version = "0.1.0"
+description = "Kaggle Playground Series S6E5 - PitNextLap binary classification (ROC-AUC)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scikit-learn>=1.4",
+    "lightgbm>=4.3",
+    "pyarrow>=15.0",
+    "python-dotenv>=1.0",
+    "wandb>=0.17",
+    "kaggle==2.2.0",
+]
+
+[project.optional-dependencies]
+eda = [
+    "jupyter>=1.0",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+]
+gpu = [
+    "xgboost>=2.0",
+    "catboost>=1.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

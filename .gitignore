@@ -1,0 +1,50 @@
+# ===== Secrets (절대 커밋 금지) =====
+.env
+kaggle.json
+.kaggle/
+**/access_token
+
+# ===== Data & 산출물 =====
+data/
+experiments/logs/*.json
+experiments/oof/
+experiments/submissions/
+models/
+*.pkl
+*.joblib
+*.ckpt
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.uv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# ===== W&B =====
+wandb/
+
+# ===== 환경/에디터 dotfiles (스튜디오 홈 공유로 인한 노이즈 제외) =====
+.cache/
+.config/
+.cursor/
+.cursor-server
+.vscode/
+.vscode-server
+.windsurf-server
+.idea/
+.npm/
+.ipython/
+.jupyter
+.claude/
+.claude.json
+.lightning_studio/
+.condarc
+.docker
+jupyter-workspace/
+.bash_history
+.zsh_history
+.zcompdump
+.memo
