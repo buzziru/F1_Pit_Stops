@@ -36,7 +36,7 @@
 | exp_001 | lgbm | baseline(14) | **0.943936** | **0.94434** | OOF≈LB(갭+0.0004) → CV 신뢰. std 0.00075, best_iter~677 |
 | exp_002 | lgbm | +is_stable_delta(15) | 0.943709 | - | Δ−0.00024(노이즈 내) → **기각**(추가 무효, 트리가 raw로 중복 학습) |
 | exp_003 | lgbm | −LapTime_Delta +is_stable_delta(14) | 0.942346 | - | Δ−0.00160(std 2배) → **기각**. raw LapTime_Delta 유용(비선형), 이진 교체는 정보 손실 |
-| exp_004 | lgbm | +Driver OOF TE(14) | **0.949522** | TBD | Δ**+0.00559**(std 8배+) → **채택**. Driver(887) 누수방지 OOF TE 치환, 전 fold 상승, best_iter↑. `features=driver_te` |
+| exp_004 | lgbm | +Driver OOF TE(14) | **0.949522** | **0.94933** | Δ**+0.00559**(std 8배+) → **채택**. OOF≈LB 갭+0.00019, Private 0.95004. Driver(887) OOF TE 치환, `features=driver_te` |
 
 ## 제출 절차
 ```bash

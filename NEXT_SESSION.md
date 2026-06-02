@@ -15,21 +15,20 @@ _최종 갱신: 2026-06-02 (exp_004 Driver OOF TE 채택, OOF 0.9495)_
 - 결정 기록: `docs/wiki/decisions.md` (#001~#008), 실험 회고: `docs/wiki/experiments/`
 
 ## 📈 현재 최고 (exp_004) — 기준점
-- **exp_004 Driver OOF TE: OOF AUC 0.94952** (std 0.00067) — baseline 0.94394 대비 **Δ +0.00559** 채택. LB 미제출(TBD).
+- **exp_004 Driver OOF TE: OOF 0.94952 / Public LB 0.94933 / Private 0.95004** — baseline 대비 OOF Δ+0.00559, LB Δ+0.00499. OOF≈LB 갭 +0.00019(재확인).
 - 직전 베이스라인 exp_001: OOF 0.94394 / Public LB 0.94434 (갭 +0.0004 → CV 신뢰, decisions #006)
 - 이후 실험은 **exp_004(0.9495)** 를 기준으로 비교
 
 ## 🔜 다음 할 일 (우선순위)
-1. **exp_004 Kaggle 제출** — `experiments/submissions/exp_004.csv` 제출 → LB 확인(OOF≈LB 재검증, +0.0056 개선폭이 LB에도 반영되는지)
-2. **추가 인코딩 실험** — `Race`/`Compound` OOF TE 추가 (`conf/features` 새 그룹), Driver TE 와 조합 → OOF 비교
-3. **피처 엔지니어링** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
-4. (M4) Optuna sweeper로 하이퍼파라미터 튜닝
+1. **추가 인코딩 실험** — `Race`/`Compound` OOF TE 추가 (`conf/features` 새 그룹), Driver TE 와 조합 → OOF 비교
+2. **피처 엔지니어링** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
+3. (M4) Optuna sweeper로 하이퍼파라미터 튜닝
 
 ## ✅ 완료
 - 베이스라인 exp_001 (#2, 제출까지) / W&B 연동 (#4, `F1-Pit`) / EDA #1 + LapTime·열화 심층(eda_02)
 - Hydra 설정 분리(#007) + Python 3.11 pin(#008)
 - **is_stable_delta ablation (exp_002/003) → 기각** — 회고: `docs/wiki/experiments/exp_002_003_is_stable_delta.md`
-- **Driver OOF TE (exp_004, #3) → 채택** (OOF 0.94952, Δ+0.00559)
+- **Driver OOF TE (exp_004, #3) → 채택·제출** (OOF 0.94952 / LB 0.94933 / Private 0.95004)
 
 ## 🛠️ 설정 관리 (Hydra) + 환경
 - 튜닝/실험 노브 → `conf/`(Hydra), 구조적 상수 → `src/config.py`
