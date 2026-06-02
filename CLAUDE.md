@@ -64,7 +64,7 @@ data/           # train/test/sample_submission  ← git 제외
 - DataFrame 출력은 `.head(5)` / `.shape` / `.dtypes` / `.isnull().sum()` 만 허용
   (→ `utils.resumetable(df)` 요약 표 사용)
 - 플롯은 **EDA 단계에서만** 생성, 이후엔 수치 요약으로 대체
-- 플롯 생성 후 **즉시 `plt.close()`** 호출
+- EDA 플롯은 `plt.show()` 로 노트북에 남기되 **작게**(figsize≤8×4, dpi 72, `eda_utils.setup_eda_style()` 기본) → 인라인 이미지 토큰 절약. 핵심만 그리고 개수 절제.
 
 ## 코딩 컨벤션
 - Python ≥ 3.11, 의존성 관리 **`uv`**

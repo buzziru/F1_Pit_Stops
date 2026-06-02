@@ -21,10 +21,14 @@ from src import config
 def setup_eda_style() -> None:
     """EDA 플롯 공통 스타일을 설정한다.
 
+    인라인 이미지의 비전 토큰을 줄이기 위해 작은 figsize + 낮은 dpi 를 기본값으로 둔다
+    (`plt.show()` 로 노트북에 남겨도 장당 수백 토큰 수준).
     노트북 첫 셀에서 `%matplotlib inline` 매직은 별도로 실행한다 (모듈에선 불가).
     """
     plt.style.use("seaborn-v0_8-white")
-    mpl.rc("font", size=11)
+    mpl.rc("font", size=10)
+    mpl.rc("figure", dpi=72, figsize=(8, 4))
+    mpl.rc("savefig", dpi=72)
 
 
 def plot_cat_target_rate(
@@ -32,7 +36,7 @@ def plot_cat_target_rate(
     col: str,
     *,
     target: str = config.TARGET_COL,
-    figsize: tuple[int, int] = (12, 5),
+    figsize: tuple[int, int] = (8, 4),
 ) -> tuple[Figure, Axes]:
     """범주형 컬럼별 타깃 양성률을 막대그래프로 그린다.
 
@@ -61,7 +65,7 @@ def plot_num_dist(
     *,
     target: str = config.TARGET_COL,
     bins: int = 50,
-    figsize: tuple[int, int] = (12, 5),
+    figsize: tuple[int, int] = (8, 4),
 ) -> tuple[Figure, Axes]:
     """수치형 컬럼 분포를 타깃 클래스별로 겹쳐 그린다.
 
