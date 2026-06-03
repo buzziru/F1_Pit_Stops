@@ -47,6 +47,10 @@
 | exp_009 | +`TyreLife_LifeFrac` (A) | 0.949358 | **Δ −0.00016 (기각)** — TyreLife/Compound기대수명 정규화. raw `TyreLife`+native `Compound` 에 이미 흡수, 중복 |
 | exp_010 | +`CumDeg_Delta` (B) | 0.949172 | **Δ −0.00035 (기각)** — 그룹 내 `Cumulative_Degradation.diff()`(과거만). raw 에 흡수, 중복 |
 | exp_011 | +A+B | 0.949095 | **Δ −0.00043 (기각)** — 가장 악화. **두 피처 코드는 baseline 으로 되돌림(revert)** |
+| exp_012 | (plain, 증강 off) | 0.943936 | 대조군 — exp_001 정확 재현(증강 노브 sanity) |
+| exp_013 | plain + 원본증강 w1.0 | 0.945677 | **Δ +0.00174 vs plain** — 외부 원본 증강 유효 (#8 Phase1) |
+| exp_014 / exp_015 | plain + 증강 w0.5 / w0.3 | 0.945324 / 0.944952 | weight 단조 증가(0.3<0.5<1.0) |
+| **exp_016** | **driver_te + 원본증강 w1.0** | **0.950959** | **🏆 채택·신기록** — vs exp_004 Δ+0.00144, 전 fold 일관. **LB: Public 0.95065 / Private 0.95139**, OOF≈LB gap +0.00031. ADR #011 |
 
 > 📌 학습: 낮은 선형 상관(corr −0.005)이 트리 무용을 뜻하지 않음. EDA 표면 신호(2.6% vs 26.1%)는 raw 가 이미 담고 있던 정보. is_stable_delta 는 채택 안 함.
 > 📌 학습(1번 그룹): 원시 컬럼(`TyreLife`·`Cumulative_Degradation`)에서 트리가 이미 뽑는 신호를 **수작업 비율/델타로 재포장하면 중복** → 부가 신호 없음. TE 와 동일 교훈: 핸드크래프트는 트리가 *못 하는* 것(고카디널리티 정규화 등)에서만 이득.

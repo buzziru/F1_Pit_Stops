@@ -50,6 +50,8 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     num_boost_round: int = cfg.model.num_boost_round
     early_stopping: int = cfg.model.early_stopping
     te_smoothing: float = cfg.features.target_encode_smoothing
+    aug_enabled: bool = cfg.augment.enabled
+    aug_weight: float = cfg.augment.weight
 
     wandb_run = None
     if use_wandb:
@@ -79,6 +81,14 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     y = train_df[config.TARGET_COL].astype(int)
     x_test = test_df[feat_cols]
 
+    # 외부 원본 증강 (train 전용). 검증/test 엔 절대 미포함. #8 참조.
+    x_src = y_src = None
+    if aug_enabled:
+        src_df = features.build_features(data.load_source_augmentation())
+        x_src = src_df[feat_cols]
+        y_src = src_df[config.TARGET_COL].astype(int)
+        print(f"[augment] 원본 {len(x_src):,}행 추가 (weight={aug_weight})")
+
     oof = np.zeros(len(train_df))
     test_pred = np.zeros(len(test_df))
     fold_scores: list[float] = []
@@ -88,14 +98,26 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         x_va = x.iloc[va_idx]
         x_te = x_test
 
-        # ⚠️ 누수 방지: 타깃 인코딩은 fold 의 train 부분으로만 fit (encoders.OOFTargetEncoder).
+        # ⚠️ 누수 방지: 타깃 인코딩은 fold 의 train 부분(대회 행)으로만 fit.
         if te_cols:
             enc = encoders.OOFTargetEncoder(te_cols, smoothing=te_smoothing)
             x_tr = enc.fit_transform_train(x_tr, y_tr)  # train: 내부 OOF
             x_va = enc.transform(x_va)                  # valid: 전체 train fold 통계
             x_te = enc.transform(x_test)                # test: 전체 train fold 통계
 
-        dtrain = lgb.Dataset(x_tr, y_tr, categorical_feature=cat_cols)
+        # 외부 원본 증강: 대회 train fold 에만 추가 (검증/test 미포함). 가중치로 영향 제어.
+        # TE 는 대회 행으로만 fit 됐고, 원본은 그 매핑으로 transform (미등장 Driver→전역평균).
+        w_tr = None
+        if aug_enabled:
+            n_comp = len(x_tr)
+            x_src_f = enc.transform(x_src) if te_cols else x_src
+            x_tr = pd.concat([x_tr, x_src_f], ignore_index=True)
+            y_tr = pd.concat([y_tr.reset_index(drop=True), y_src.reset_index(drop=True)], ignore_index=True)
+            for col in cat_cols:  # concat 후 category dtype 복원 (union 카테고리)
+                x_tr[col] = x_tr[col].astype("category")
+            w_tr = np.concatenate([np.ones(n_comp), np.full(len(x_src_f), aug_weight)])
+
+        dtrain = lgb.Dataset(x_tr, y_tr, categorical_feature=cat_cols, weight=w_tr)
         dvalid = lgb.Dataset(x_va, y.iloc[va_idx], categorical_feature=cat_cols)
         model = lgb.train(
             lgb_params,

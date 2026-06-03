@@ -2,47 +2,50 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-02 (exp_004 Driver OOF TE 채택, OOF 0.9495)_
+_최종 갱신: 2026-06-03 (#8 외부 원본 증강 채택 — exp_016 신기록 Public 0.95065 / Private 0.95139)_
 
 ## 🟢 현재 상태
 - 프로젝트 골격 완성: `src/`(config·data·features·cv·train·predict·utils·encoders·eda_utils), `docs/`, `experiments/`, `pyproject.toml`, `.gitignore`
-- 데이터 다운로드·메타분석 완료 (`data/`, git 제외) — train 439,140×16 / test 188,165×15 / 결측 없음 / 양성률 19.9%
-- 확정 설계: StratifiedKFold 5-fold, LightGBM CPU 베이스라인, `is_unbalance=False`
-- **누수 방지 OOF 타깃 인코딩** (`src/encoders.py`) — `features=driver_te`(Hydra)로 활성화, 기본 비활성
-- 커스텀 서브에이전트 3종 (`.claude/agents/`, git 추적): `eda-explorer`, `feature-smith`, `kaggle-researcher`
-- **EDA 완료 (#1 종료)** — `notebooks/eda_01_checklist.ipynb`(37셀), 결과는 `docs/eda.md`. 추가 EDA는 주제별 `notebooks/eda_<NN>_<주제>.ipynb` 로 분리 생성. 핵심: 드리프트 없음(adv AUC 0.5012), 피처 우선순위 TyreLife·LapNumber·Stint·Compound·RaceProgress, 파생피처 누수 증거 없음(LapTime_Delta 예측력 의문)
-- Jupyter: `http://127.0.0.1:8888` (.venv 커널, seaborn 포함)
-- 결정 기록: `docs/wiki/decisions.md` (#001~#008), 실험 회고: `docs/wiki/experiments/`
+- 데이터: 대회 train 439,140×16 / test 188,165×15 + **외부 원본** `data/f1_strategy_source/f1_strategy_dataset_v4.csv`(101,371행, 증강용, git 제외)
+- 확정 설계: StratifiedKFold 5-fold(seed=42 고정·검증됨), LightGBM CPU, `is_unbalance=False`
+- **누수 방지 OOF 타깃 인코딩** — `features=driver_te`. conf 그룹: `base / driver_te`(채택) + `driver_race_te / driver_compound_te / all_te`(기각, 보존)
+- **외부 증강** — `augment.enabled/weight`(Hydra), `data.load_source_augmentation()`. fold train 에만 원본 추가·검증=대회 only (ADR #011, 채택)
+- 커스텀 서브에이전트 3종: `eda-explorer`, `feature-smith`, `kaggle-researcher`
+- 결정 기록: `docs/wiki/decisions.md` (#001~#011), 실험 회고: `docs/wiki/experiments/` + 설계 `docs/wiki/external_data_augmentation.md`
 
-## 📈 현재 최고 (exp_004) — 기준점
-- **exp_004 Driver OOF TE: OOF 0.94952 / Public LB 0.94933 / Private 0.95004** — baseline 대비 OOF Δ+0.00559, LB Δ+0.00499. OOF≈LB 갭 +0.00019(재확인).
-- 직전 베이스라인 exp_001: OOF 0.94394 / Public LB 0.94434 (갭 +0.0004 → CV 신뢰, decisions #006)
-- 이후 실험은 **exp_004(0.9495)** 를 기준으로 비교
+## 📈 현재 최고 (exp_016) — 기준점
+- **exp_016 = driver_te + 외부 원본 증강(w1.0): OOF 0.950959 / Public LB 0.95065 / Private 0.95139**
+- exp_004(driver_te) 대비 OOF Δ+0.00144 / Public Δ+0.00132 / Private Δ+0.00135, 전 fold 일관 상승. OOF≈LB 갭 +0.00031.
+- 이후 실험은 **exp_016 기준** 비교.
 
 ## 🔜 다음 할 일 (우선순위)
-1. **추가 인코딩 실험 (#6)** — `Race`/`Compound` OOF TE 추가 (`conf/features` 새 그룹), Driver TE 와 조합 → exp_004(0.94952) 대비 OOF 비교
-2. **피처 엔지니어링 (#7)** — RaceProgress 구간화, Cumulative_Degradation 구간/클리핑, 스틴트 내 cumcount (`feature-smith`)
-3. (M4) Optuna sweeper로 하이퍼파라미터 튜닝 (이슈 미생성 — 튜닝 단계 진입 시)
+1. **(M4) Optuna sweeper 하이퍼파라미터 튜닝** — `hydra-optuna-sweeper`, **exp_016(driver_te + 증강) 기준** 튜닝. (이슈 미생성 — 착수 시 생성)
+2. **모델 다양성** — XGBoost / CatBoost (증강 포함) → exp_016 과 블렌딩/스태킹. 대형이면 Kaggle GPU 이관(.py→.ipynb).
+3. (옵션) #8 후속 — weight>1.0 스윙, 원본을 feature(예측값)로 쓰는 변형 등. 현재 weight=1.0 고정.
 
 ## ✅ 완료
-- 베이스라인 exp_001 (#2, 제출까지) / W&B 연동 (#4, `F1-Pit`) / EDA #1 + LapTime·열화 심층(eda_02)
-- Hydra 설정 분리(#007) + Python 3.11 pin(#008)
-- **is_stable_delta ablation (exp_002/003) → 기각** — 회고: `docs/wiki/experiments/exp_002_003_is_stable_delta.md`
-- **Driver OOF TE (exp_004, #3) → 채택·제출** (OOF 0.94952 / LB 0.94933 / Private 0.95004)
+- exp_001 베이스라인(#2) / W&B(#4) / EDA #1+eda_02 / Hydra 분리(#007) + Python 3.11 pin(#008)
+- **is_stable_delta (exp_002/003) → 기각** / **Driver OOF TE (exp_004, #3) → 채택**
+- **Race/Compound OOF TE (exp_005~007, #6) → 전부 기각** — ADR #009, #6 close
+- **1번 그룹 파생피처 (exp_008~011, #7) → 전부 기각·revert** — ADR #010, 회고 `exp_008_011_group1_fe.md`
+- **LapTime_Delta/Cumulative_Degradation 리서치** — 원본 공식 후보(직전랩/스틴트첫랩 delta), S6E5 합성본은 재현 안 됨. `docs/data_dictionary.md`
+- **🏆 외부 원본 증강 (exp_012~016, #8) → 채택·제출·신기록** — Phase1 plain +0.00174, Phase2 driver_te exp_016 Public 0.95065/Private 0.95139. ADR #011, 설계 `external_data_augmentation.md`, #8 close
 
 ## 🛠️ 설정 관리 (Hydra) + 환경
 - 튜닝/실험 노브 → `conf/`(Hydra), 구조적 상수 → `src/config.py`
-- 실행: `uv run python -m src.train exp_id=... [features=driver_te] [model.params.num_leaves=127] [use_wandb=false]`, 멀티런 `-m ...=a,b`
-- **Python 3.11 pin** 완료 (`.python-version`, Kaggle 동일). `@hydra.main` 정상.
-- ⚠️ `.venv` 가 3.11 로 재생성됨 → **Jupyter 서버(8888) 재시작 필요**: `uv run jupyter lab --port 8889 --IdentityProvider.token BLOCK --ip 0.0.0.0 --no-browser`
+- 실행: `uv run python -m src.train exp_id=... [features=driver_te] [augment.enabled=true augment.weight=1.0] [use_wandb=false]`
+- ablation: `conf/features` 의 `drop_cols` 노브
+- 제출: `set -a; . ./.env; set +a; uv run kaggle competitions submit -c playground-series-s6e5 -f experiments/submissions/<exp>.csv -m "..."`
+- **Python 3.11 pin** 완료. Jupyter: `uv run jupyter lab --port 8888 --IdentityProvider.token BLOCK --ip 0.0.0.0 --no-browser`
+- ⚠️ 긴 학습은 백그라운드 시작·정상동작만 확인하고 턴 종료(블로킹 금지). 메모리 `experiment-async-workflow`.
 
 ## ⏳ 대기/보류
-- M4 튜닝 시 Optuna sweeper(hydra-optuna-sweeper) 추가
-- Kaggle GPU 이관 시 `.py → .ipynb` 변환 절차 (대형 모델 단계에서)
+- M4 튜닝 시 Optuna sweeper / Kaggle GPU 이관 시 `.py → .ipynb`
+- #7 핸드크래프트 파생 (ADR #010 보류, 이슈 오픈 유지)
+- 외부데이터 사용 — 대회 규정 허용 범위 확인 권장(Playground 통상 허용)
 
 ## 🔗 열린 이슈
-- [#6](https://github.com/buzziru/F1_Pit_Stops/issues/6) [exp] Race/Compound OOF TE (Driver와 조합) (M3, P1) ← 다음
-- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) [feature] 파생 피처 (RaceProgress 구간화·열화·cumcount) (M3, P2)
-- ~~#1 EDA~~ ✅ / ~~#2 베이스라인~~ ✅ / ~~#3 Driver OOF TE(exp_004)~~ ✅(채택) / ~~#4 W&B~~ ✅ / ~~#5 is_stable_delta ablation~~ ✅(기각)
+- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) [feature] 파생 피처 — **보류(parked)**, 닫지 않음. ADR #010
+- ~~#1~~✅ / ~~#2~~✅ / ~~#3 Driver TE~~✅ / ~~#4~~✅ / ~~#5~~✅기각 / ~~#6 Race/Compound TE~~✅기각 / ~~#8 외부 증강~~✅채택(close)
 
 repo: https://github.com/buzziru/F1_Pit_Stops

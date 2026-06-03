@@ -20,6 +20,8 @@ SUBMISSION_DIR: Path = EXPERIMENTS_DIR / "submissions"
 TRAIN_PATH: Path = DATA_DIR / "train.csv"
 TEST_PATH: Path = DATA_DIR / "test.csv"
 SAMPLE_SUBMISSION_PATH: Path = DATA_DIR / "sample_submission.csv"
+# 외부 증강 원본 (S6E5 합성의 추정 원본, train 증강 전용 — 검증/제출엔 미사용)
+SOURCE_AUG_PATH: Path = DATA_DIR / "f1_strategy_source" / "f1_strategy_dataset_v4.csv"
 
 # ===== 재현성 =====
 SEED: int = 42
