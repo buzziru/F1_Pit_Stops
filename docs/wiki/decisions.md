@@ -2,6 +2,19 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [009] OOF TE 는 고카디널리티 정규화 도구 — Race·Compound 는 native 유지 — 2026-06-03
+- **결정**: OOF 타깃 인코딩은 **`Driver`(887) 단독**에만 적용(exp_004 유지). 저카디널리티 `Race`(26)·`Compound`(5)는 **native categorical 유지**. (#6 종결)
+- **근거 (exp_004 OOF 0.94952 기준, fold std≈0.0007)**:
+  - exp_005 `[Driver,Race]` OOF **0.94874** (Δ−0.00078, std 2배 이상 하락 → 해로움)
+  - exp_006 `[Driver,Compound]` OOF **0.94941** (Δ−0.00011, 노이즈 수준 → 무이득)
+  - exp_007 `[Driver,Race,Compound]` OOF **0.94876** (Δ−0.00076, 두 손실 누적 → driver_race 단독과 동일 수준)
+- **이유 (왜 신호가 있는데도 효과 없나)**:
+  - 신호 부족이 원인이 **아님**. 카테고리별 양성률 가중 std: Compound **0.106** > Race 0.075 > Driver 0.054 — 신호 크기 순서와 TE 효과 순서(Driver≫나머지)가 정반대.
+  - **TE의 본질은 희소 고카디널리티의 정규화**다. Driver는 887종×평균 495행(꼬리 표본 수십 개)이라 native 최적분할이 과적합 → 스무딩(=20)이 전역평균으로 수축시켜 이득(+0.0056).
+  - Race(17k행/cat)·Compound(88k행/cat)는 표본이 충분해 native 최적분할이 이미 신호를 다 추출 → TE가 보탤 정규화 이득=0. 반면 TE는 **단일 float로 붕괴 → 분할/상호작용 유연성 손실 + OOF 인코딩 노이즈**만 추가.
+  - Race가 Compound보다 더 해로운 이유: 서킷별 피트 윈도가 `LapNumber·Stint·TyreLife`와 **상호작용**하는데 타깃평균 float로 얼리면 그 상호작용이 소실. Compound는 한계정보가 이미 열화 피처(`TyreLife·Cumulative_Degradation`)에 흡수돼 손실 미미.
+- **트레이드오프/일반화**: 향후 새 범주형 TE 검토 시 **카디널리티/표본밀도 우선** 판단. 저카디널리티는 기본 native, TE는 희소 고카디널리티에서만 실험.
+
 ## [008] Python 3.11 pin (Kaggle 동일) — 2026-06-02
 - **결정**: 프로젝트 Python 을 **3.11** 로 고정 (`.python-version`, `requires-python>=3.11,<3.13`). `.venv` 재생성.
 - **이유**: 초기 uv 가 최신 3.14 를 자동 선택 → Hydra `@hydra.main` 등 비호환·생태계 불안정. Kaggle 노트북이 3.11 이라 **이관 재현성**에도 유리.

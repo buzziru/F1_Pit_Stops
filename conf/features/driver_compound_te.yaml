@@ -1,0 +1,4 @@
+# Driver + Compound OOF 타깃 인코딩 (native categorical 에서 제외 → fold-내 OOF 치환).
+target_encode_cols: [Driver, Compound]
+target_encode_smoothing: 20.0
+drop_cols: []               # 모델 입력에서 제외할 컬럼 (ablation 용)
