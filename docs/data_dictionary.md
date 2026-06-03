@@ -61,6 +61,8 @@ F1 한 랩(lap)마다 그 드라이버의 상태가 한 행(row)이다. **"이 �
 
 ### 파생/주의 컬럼 ⚠️
 - **`LapTime_Delta`**, **`Cumulative_Degradation`**: 정의가 명확치 않고(부호·기준 불명), 극단값이 큼. shift로 재현 불가(미래 누수 직접 증거는 없음). `LapTime_Delta`는 타깃과 선형 상관 ≈0 → **ablation으로 유지/제거 판단** 권장.
+  - **커뮤니티 공식 후보(원본 데이터셋 기준, 2026-06-03 리서치)**: `LapTime_Delta = LapTime[i] − LapTime[i−1]`(직전 랩 대비), `Cumulative_Degradation = LapTime[i] − 스틴트_첫랩_LapTime`(스틴트 시작 대비). 음수=연료 경량화로 더 빠름. 극단값은 세이프티카/적색기 랩(LapTime~2400s) 전파. 출처: [formula1math substack](https://formula1math.substack.com/p/a-deep-dive-into-tyre-degradation), [PMC 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12626961/), 원본 추정 [anthonytherrien/predicting-f1-pit-stops-vault](https://www.kaggle.com/datasets/anthonytherrien/predicting-f1-pit-stops-vault).
+  - **⚠️ 단, S6E5 데이터에선 이 공식이 재현 안 됨(검증 2026-06-03)**: `LapTime − 스틴트첫랩` vs 실제 `Cumulative_Degradation` **corr 0.006**(스틴트 첫 관측행 CumDeg median −20, 0 아님), 관측 직전행 LapTime diff vs 실제 `LapTime_Delta` **corr 0.037**. → 원본에선 맞아도 **합성 과정에서 변형/노이즈**된 것으로, 두 컬럼은 **블랙박스 수치 피처로 취급**. (`LapTime_Delta`는 서브샘플로 "직전 랩"이 데이터에 없어 재현 불가일 수도 있으나, `Cumulative_Degradation`은 스틴트 고정기준이라 corr≈0이 단순 LapTime 델타 아님을 시사.)
 - **`LapTime (s)`**: 최대 2507초 같은 극단값은 세이프티카/적색기/피트 인·아웃랩. 트리 모델엔 무해, 스케일 기반 모델은 클리핑 고려.
 
 ### 타깃
@@ -71,7 +73,7 @@ F1 한 랩(lap)마다 그 드라이버의 상태가 한 행(row)이다. **"이 �
 
 ## 4. 미확정 / 대회 description 확인 권장
 - `PitStop` 의 정확한 정의(인랩? 피트 발생 랩?)와 `PitNextLap`과의 시점 관계.
-- `LapTime_Delta`/`Cumulative_Degradation` 의 산출 기준(무엇 대비 delta인지, 음수 의미).
+- ~~`LapTime_Delta`/`Cumulative_Degradation` 의 산출 기준~~ → **조사 완료(2026-06-03)**: 커뮤니티 공식 후보 확보했으나 S6E5에선 재현 안 됨(corr≈0) → 블랙박스 취급. 상세는 3절 "파생/주의 컬럼".
 - `RaceProgress` 분모(실제 완주 랩수 vs 예정 총 랩수) — group max랩 대비 corr 0.89로 완전 일치는 아님.
 
 > 정의가 확정되면 본 문서와 `docs/eda.md` 4절을 갱신한다.
