@@ -2,6 +2,17 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [014] Kaggle FE 2차 탐색 — 경쟁자/cross-row 후보 사전 기각, Driver×Race TE만 ablation — 2026-06-04
+- **결정**: Kaggle 공개솔루션·F1 논문 기반 신규 FE 후보를 ADR #012 게이트(R²/잔차 사전 스크리닝)로 평가. 경쟁자 피트(위치조건)·SC 이상치·외부 Race×Compound·Driver×Compound = **기각/저순위**, **Driver×Race 합성키 OOF TE 1종만 ablation** 진행.
+- **근거 (스크리닝 실측)**:
+  - `ahead_pit_rate`(앞순위 경쟁자 평균 PitStop): corr 0.245, **R²(raw)=0.623, 잔차corr 0.073** < field_pit_rate 0.093 → 더 약함 → **사전 기각**(학습 불필요).
+  - 합성 구조가 위치 신호 무력화: race-lap당 116행 vs distinct Position 18.4 → **행 99.8%가 Position 중복**, "바로 앞 차"(논문 `DriverAheadPit`) 재현 불가.
+  - Driver×Race: **14,942 유효셀, median 25행이나 32%가 <10행** → 정규화 여지 있으나 불확실. TE는 R²스크린 불가 → OOF ablation 필요.
+  - 외부 Race×Compound(저카디 130 → native span, ADR #009)·Driver×Compound(exp_006 유해)는 저순위.
+- **전략적 발견 (LB)**: 상위권은 FE 아닌 **앙상블 다양성**으로 우위 — 8위 Public **0.95462**(LGBM+CatBoost+XGB+neural 6+), 우리 0.95065, 갭 ~0.004. 2위 FE 대규모 탐색도 1위와 0.00001 → FE 한계. → **ADR #010/#012 필터 타당성 LB 재확인**, 실질이득은 M4 앙상블(ADR #013).
+- **출처**: 8위 L5 ensemble writeup, Frontiers AI 2025(PMC12626961), 원본 데이터셋.
+- **트레이드오프**: Driver×Race TE도 marginal 예상. 채택 시 전 base 모델 공유.
+
 ## [013] 개별 모델 튜닝을 모델 다양성·앙상블 이후로 미룸 — 2026-06-04
 - **결정**: 하이퍼파라미터 튜닝(M5, Optuna)을 **모델 다양성 도입(XGB/CatBoost)·앙상블(M4) 이후로** 미룬다. 마일스톤 순서 M4 Tuning↔M5 Ensemble 을 swap → **M4 Ensemble → M5 Tuning**.
 - **근거**:
