@@ -2,6 +2,59 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [018] non-GBDT 다양성 — RealMLP 도입 계획 (exp_023) — 2026-06-04 (계획, 미실행)
+- **결정**: M4 4번째 다양성 모델로 **RealMLP**(`pytabkit`) 도입. GBDT 3종(LGBM/XGB/CatBoost, OOF 상관 0.985~0.994)과 **메커니즘이 다른 non-GBDT(MLP 계열)**로 decorrelation 확보가 목표. 차순위 후보 **TabM**(동일 pytabkit API), TabICLv2(GPU 50GB) 는 보류.
+- **근거 (Kaggle 리서치)**:
+  - S6E5 **8위 솔루션이 RealMLP 를 "가장 중요한 모델 패밀리"**로 명시, 공개 노트북 단독 **CV 0.95409 > 우리 XGB 0.951090**(+0.003). **2위 솔루션 "빅6"**(XGB·CatBoost·LGBM·RealMLP·TabM·TabICLv2)에 포함.
+  - RealMLP(NeurIPS 2024): meta-tuned **default 파라미터로 튜닝 없이 GBDT 와 competitive**, robust scaling 내장, sklearn API, CPU 가능 → 저비용 진입.
+  - 리뷰 권고 #2(모델군 다양성)·ADR #014 backlog(neural) 실현. GBDT 상관 한계(+0.0001대 블렌드)를 넘는 유일 후보군.
+- **실행 계획 (exp_023)**:
+  - `pip install pytabkit[models]`(extra 검토), `src/train_realmlp.py`(train_xgb 패턴 미러).
+  - **동일 fold**: 외부 StratifiedKFold(seed=42) 루프, pytabkit `n_cv=1`(내부 CV 미사용) → exp_016~022 와 동일 비교. 외부 증강 동일(ADR #011).
+  - **Driver(887)**: 보유한 `driver_te` float 재사용(고카디 embedding 우회). Compound/Race 는 `cat_col_names` 내부 embedding. 수치 스케일링은 RealMLP robust scaling 내장으로 불필요.
+  - **누수 주의**: early-stopping 내부 val split 이 TE fit 에 안 섞이게 fold 순서 관리(ADR #005). 모델 seed 분리·fold 동결(ADR #016).
+  - **1-fold 벤치로 wall-clock 먼저 측정** → 로컬 vs Kaggle GPU 이관 결정.
+- **판정 기준**: 단독 OOF + **GBDT 와 OOF 상관 + 4-way 블렌드 OOF(균등 우선)**. 단독이 약해도 블렌드 이기면 채택(ADR #015/#017).
+- **트레이드오프/리스크**: 의존성·학습시간↑. corr 는 추정(통상 0.92~0.96, 실측 필요), 학습시간 미확인 → 1-fold 벤치 게이트. **기대 4-way 블렌드 +0.001~0.003**(상위권 갭 ~0.004 상당 해소 가능성).
+- **출처**: 8위 L5 ensemble / 2위 writeup / RealMLP arXiv:2407.04491 / TabM arXiv:2410.24210 / pytabkit.
+
+## [017] CatBoost 채택 = native ordered TS (>OOF TE), 3-way 블렌드 신기록 — 2026-06-04
+- **결정**: M4 3번째 다양성 모델로 CatBoost **native categorical(ordered TS, exp_021)** 채택. 외부 OOF TE 버전(exp_020)은 기각·대조군 보존. (Driver 표현만 분기, 나머지 동일 fold·증강·피처)
+- **근거 (실측, 동일 fold/seed)**:
+  - **단독 OOF**: TE 0.949343 ≈ native **0.949373** (동률, native 미세 우위). 둘 다 LGBM 0.950959·XGB 0.951090보다 낮음.
+  - **OOF 상관(낮을수록 다양성↑)**: native LGBM **0.9856**/XGB **0.9859** < TE 0.9871/0.9872.
+  - **3-way 블렌드(LGBM exp_016 + XGB exp_019 + CAT)**: native **균등1/3 0.951507** > TE 최적가중 0.951503 → **native 가 가중튜닝 없이도 우위(견고)**. vs LGBM+XGB 0.951402 → Δ**+0.000105**(균등)~+0.000155(최적 w_cat≈0.20).
+- **의의**: ADR #015 레버1(범주형 표현 분기, 비용 0) 실측 검증. 신규 FE 없이 인코딩 분기만으로 OOF 신기록(미제출). CatBoost 자체 ordered TS 가 외부 OOF TE 보다 다양성·정확도 모두 우월.
+- **판정 기준**: 블렌드 OOF **균등가중 우선**(#015). 최적가중(0.951557)은 OOF 과적합 소지 → 참고용.
+- **발견(미완학습)**: native·TE 모두 fold별 best_iter 4983~4999로 **5000 cap 에 붙음, early_stopping(200) 미발화** → depth=6 symmetric+lr0.05 라 수렴 전. iteration 상향 여지 → 별도 검토(#013 M5 경계, "학습설정 교정 vs HP 튜닝" 구분).
+- **후속(exp_022 채택·제출 — CatBoost 최종)**: native + `num_boost_round=15000`(early_stopping 200). best_iter **6961~9377로 cap 미발화=수렴** → 미완학습 진단 확증. 단독 OOF 0.949373→**0.949811**(Δ+0.000439), **상관 거의 불변**(LGBM 0.9854/XGB 0.9858) → 다양성 손실 없이 단독·블렌드 동시 상승. **3-way 균등1/3 = 0.951642**(exp_021 블렌드 +0.000135). GPU ~30분. **best_iter 로깅 원칙 신설**(CLAUDE.md, 3 train.py + `utils.log_experiment` 반영). → **CatBoost는 exp_022 채택**(exp_021 대체).
+- **🏁 마일스톤 제출(LB 검증)**: 3-way 균등1/3(exp_016+exp_019+exp_022) → **Public 0.95084 / Private 0.95165** (vs exp_016 단독 Public 0.95065/Private 0.95139, Δ+0.00019/+0.00026). **제출된 신기록.** OOF 0.951642≈Private 0.95165(갭 +0.00001), Public 갭 +0.0008(서브셋 노이즈, 참고 #006).
+- **트레이드오프**: 절대 이득 작음(+0.0002대 LB) — 3모델 모두 GBDT라 상관 본질적으로 높음. 큰 도약은 모델군 추가(neural/RealMLP, ADR #018·#014 backlog).
+
+## [016] fold seed 동결 + 모델 seed 분리 (최종 단계 seed averaging·튜닝·블렌딩 대비) — 2026-06-04
+- **결정**: 최종 단계의 **seed averaging·튜닝·블렌딩**을 위해 **fold split seed(`config.SEED=42`)는 영구 동결**하고, **모델 seed(XGB/CatBoost/LGBM 의 `random_state`/`seed`)는 별도 노브로 분리**한다. 모델 seed 변경이 **CV 분할을 절대 건드리지 않게** 한다. (※ 지금은 미구현·미사용 — seed=42 단일 유지, 최종 단계에서 적용)
+- **배경 (현재 결합 상태)**: `cv.get_folds()`(cv.py:33)와 모델 `random_state`(train_xgb.py:143 등)가 **둘 다 `config.SEED` 를 참조**한다. 따라서 `config.SEED` 를 바꾸면 fold 와 모델 seed 가 **동시에** 바뀐다 → 모델 seed만 흔들려던 의도와 달리 fold 가 이동.
+- **이유 (fold 이동 시 문제)**:
+  - **비교 오염** — 검증 파티션이 달라져 단독 OOF·corr·Δ 가 *모델차이 + fold차이* 혼재 (ADR #002 "모든 모델 비교 동일 fold" 위반).
+  - **OOF≈LB 신뢰 저하** — OOF 행 정렬·행단위 OOF-clean 자체는 유지(하드 누수 아님)이나, 서로 다른 fold 구조의 OOF 를 섞고 가중치를 OOF 로 고르면 갭 ~0.0003(#006) 추정에 변동성↑·비표준.
+  - 모델 seed 만 바꾸면 `subsample`/`colsample` 재추첨만 달라져 **다양성·분산감소를 얻으면서 folds·OOF 정렬·비교가능성은 유지** — 이게 #002 가 말한 "최종 단계 seed averaging" 의 정석.
+- **구현 메모 (적용 시)**: `cv.get_folds(y)` 는 항상 `config.SEED`(=42) 그대로 두고, 모델 seed 만 conf 노브(`model.seed` 또는 `model.params.random_state`, 기본 42)로 빼서 학습 코드가 그 노브를 모델에만 주입. `get_folds` 는 모델 seed 를 절대 참조하지 않으므로 fold 동결이 구조적으로 보장됨. seed averaging = **같은 fold**에서 seed 여러 개 학습 후 OOF·test 예측 평균.
+- **기대치/트레이드오프**: 동일 알고리즘·피처·folds 에서 모델 seed 만의 다양성은 **작다(분산감소 위주, corr 거의 유지)** → 블렌드 이득 제한적이라 **보조 레버**(ADR #015 레버 3). 큰 decorrelation 은 범주형 표현 분기·모델군 추가에서. 적용 시점은 앙상블 구성 확정 후 M5(#013).
+
+## [015] 앙상블 다양성은 신규 FE가 아닌 표현·알고리즘·샘플링 분기로 — 2026-06-04
+- **결정**: 다양성(블렌딩 이득) 확보를 위해 **모델별 신규 FE 탐색은 하지 않는다(기각)**. XGB/CatBoost 등 다양성 모델은 **LGBM 베스트와 동일 피처셋**을 유지하고, decorrelation 은 **① 범주형 표현 ② 알고리즘 ③ 인코딩/샘플링/seed** 분기로만 추구한다.
+- **이유**:
+  - **FE 공간 소진** — 단일 모델 정확도 기준 FE는 #014에서 채택 0건으로 소진 판정(exp_002~018 누적 기각). 모델별로 새 FE 탐색을 또 여는 건 기대값이 낮다.
+  - **모델별 hand-crafted FE는 ROI 최저** — 같은 데이터·타깃이면 GBDT들은 비슷한 경계로 수렴(LGBM↔XGB OOF corr **0.9944**). 피처 분기가 주는 decorrelation 은 보통 작은 반면, 파이프라인 분기·누수 재검·재현 부담(모델×fold×블렌드 측정) 비용은 크다. CLAUDE.md 단순성 원칙과도 충돌.
+  - **decorrelation 의 큰 레버는 FE가 아님** — PS류에서 다양성 이득은 (a)모델군 (b)범주형 인코딩 (c)seed/bagging 에서 나온다(#014 LB 관찰: 상위권 우위는 앙상블 다양성).
+- **방안 (XGB·CatBoost 다양성 이득 레버, ROI 순)**:
+  1. **범주형 표현 분기 — 비용 0, 효과 큼**: Driver 를 모델별로 다르게 표현. LGBM/XGB = OOF TE(float), **CatBoost = native ordered TS**(exp_021, `features=base`). 같은 피처를 *다른 표현*으로 주입 → 구조적 decorrelation. ⚠️ 이는 "신규 FE"가 아니라 **기존 피처의 인코딩 분기**라 본 결정과 무모순.
+  2. **알고리즘 분기 — 이미 확보**: LGBM/XGB leaf-wise ↔ CatBoost symmetric tree. 추가 비용 없음.
+  3. **인코딩/샘플링/seed 분기 — 저비용**: 모델별 `subsample`·`colsample`·TE `smoothing` 차등, **seed averaging**(최종 단계, #002). 다양성 모델에서만 노브를 흔들어 corr↓.
+  4. **(조건부·표적) 기각된 *중립* 피처의 다양성 주입** — 오직 단독 OOF Δ≈0(−0.0002~−0.0004)이던 기각 피처(group1, `field_pit_rate` 등 *이미 구현·누수검증됨*)에 한해, **다양성 모델에만** 추가하고 **블렌드 OOF 로 판정**. open-ended 탐색이 아니라 기존 자산 재사용. 1~3 레버 소진 후에도 더 필요할 때만.
+- **판정 기준(필수)**: 다양성 변경은 **단독 OOF 가 아니라 블렌드/스택 OOF + OOF 상관**으로 채택 판단한다. 단독이 소폭 손해여도 블렌드가 이기면 채택(기존 단일모델 기각 기준과 별개).
+- **트레이드오프**: 피처셋을 고정해 파이프라인 단순·재현성 유지. 다양성 상한은 표현/알고리즘/샘플링·모델군 추가(neural 등 #014 backlog)로 확장하고, 그래도 부족하면 4번을 표적 실험. M5 튜닝은 앙상블 구성 확정 후(#013).
+
 ## [014] Kaggle FE 2차 탐색 — 경쟁자/cross-row 후보 사전 기각, Driver×Race TE만 ablation — 2026-06-04
 - **결정**: Kaggle 공개솔루션·F1 논문 기반 신규 FE 후보를 ADR #012 게이트(R²/잔차 사전 스크리닝)로 평가. 경쟁자 피트(위치조건)·SC 이상치·외부 Race×Compound·Driver×Compound = **기각/저순위**, **Driver×Race 합성키 OOF TE 1종만 ablation** 진행 → **exp_018 기각(Δ−0.00044)**. 이로써 이번 탐색 라운드의 FE 후보 전부 소진.
 - **근거 (스크리닝 실측)**:
@@ -76,6 +129,7 @@
 - **이유**: exp_001 베이스라인에서 OOF 0.94394 vs Public LB 0.94434 (**갭 +0.0004**) → CV가 LB를 잘 대변. StratifiedKFold 설계 검증됨.
 - **재확인 (2026-06-02)**: exp_004(Driver OOF TE) OOF 0.94952 vs Public LB 0.94933 (**갭 +0.00019**, Private 0.95004). OOF 개선폭 +0.00559 ≈ LB 개선폭 +0.00499 → 큰 변화에서도 OOF≈LB 유지, 개선이 실데이터에 그대로 반영됨.
 - **재확인 (2026-06-03, 외부데이터)**: exp_016(driver_te + 외부 증강) OOF 0.950959 vs Public LB 0.95065 (**갭 +0.00031**, Private 0.95139). OOF Δ+0.00144 ≈ Public Δ+0.00132 ≈ Private Δ+0.00135 → **외부데이터 증강에도 OOF≈LB 유지**(참고 [011]).
+- **재확인 (2026-06-04, 3-way 블렌드)**: 균등1/3(exp_016+exp_019+exp_022) OOF 0.951642 vs **Private 0.95165(갭 +0.00001, 거의 정확)** / Public 0.95084(**갭 +0.0008**). Private 는 OOF 와 정합하나 **Public 갭이 평소(~0.0003)보다 벌어짐** → Public 서브셋 노이즈로 판단(Private 가 OOF 와 일치). 블렌드 LB 이득 Public +0.00019/Private +0.00026(vs exp_016). → OOF 1차 기준 신뢰 유지하되, **블렌드 가중 결정은 Public 단일점보다 OOF·Private 정합 우선**.
 - **트레이드오프**: 제출 횟수 절약·반복 속도↑. 단 갭이 벌어지는 실험이 나오면 재검증.
 
 ## [005] OOF 타깃 인코딩으로 누수 차단 — 2026-06-02

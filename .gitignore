@@ -7,8 +7,10 @@ kaggle.json
 # ===== Data & 산출물 =====
 data/
 experiments/logs/*.json
+experiments/logs/*.run.log
 experiments/oof/
 experiments/submissions/
+catboost_info/
 models/
 *.pkl
 *.joblib

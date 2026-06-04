@@ -71,6 +71,7 @@ data/           # train/test/sample_submission  ← git 제외
 ## 실험 추적
 - **JSON 로그**: `experiments/logs/<exp_id>.json` (`utils.log_experiment`, 자동)
 - **W&B**: ✅ 연동 완료 — project **`F1-Pit`** (https://wandb.ai/paraise-/F1-Pit). `train.py` 가 fold AUC·params·OOF 를 기록. 인증은 `.env` 의 `WANDB_API_KEY`(`utils.load_env`). 기본 활성, `--no-wandb` 로 끔.
+- **best_iter 로깅 원칙 (필수)**: early-stopping 모델은 **fold별 `best_iter` 를 반드시 기록·검수**한다 (JSON 로그·stdout). `best_iter` 가 `num_boost_round` cap 에 붙으면(= early-stopping 미발화) **미완 학습 신호** → cap 상향 후 재학습. 단독/블렌드 점수를 신뢰하기 전에 모든 모델이 수렴(early-stop 발화)했는지 확인할 것. (CatBoost exp_020/021 에서 cap 미발화로 뒤늦게 발견 — ADR #017.)
 
 ## 토큰 절약 원칙 (필수 준수)
 - DataFrame 출력은 `.head(5)` / `.shape` / `.dtypes` / `.isnull().sum()` 만 허용

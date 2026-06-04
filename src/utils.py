@@ -70,6 +70,7 @@ def log_experiment(
     cv_scores: list[float],
     params: dict[str, Any],
     *,
+    best_iters: list[int] | None = None,
     lb_score: float | None = None,
     notes: str = "",
     log_dir: Path = config.LOG_DIR,
@@ -82,6 +83,8 @@ def log_experiment(
         features: 사용한 피처 목록.
         cv_scores: fold 별 검증 점수.
         params: 모델 하이퍼파라미터.
+        best_iters: fold 별 best_iteration (early-stopping 모델). cap 미발화(미완 학습)
+            점검용 — best_iter 가 num_boost_round 에 붙으면 cap 상향 필요 (CLAUDE.md 원칙).
         lb_score: 리더보드 점수 (제출 후 갱신, 기본 None).
         notes: 자유 메모.
         log_dir: 로그 저장 디렉터리.
@@ -101,6 +104,7 @@ def log_experiment(
         "cv_scores": [round(float(s), 6) for s in scores],
         "cv_mean": round(float(scores.mean()), 6),
         "cv_std": round(float(scores.std()), 6),
+        "best_iters": [int(b) for b in best_iters] if best_iters is not None else None,
         "lb_score": lb_score,
         "params": params,
         "notes": notes,

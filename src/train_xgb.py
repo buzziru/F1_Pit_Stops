@@ -107,6 +107,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     oof = np.zeros(len(train_df))
     test_pred = np.zeros(len(test_df))
     fold_scores: list[float] = []
+    best_iters: list[int] = []
 
     for fold, (tr_idx, va_idx) in enumerate(cv.get_folds(y)):
         x_tr, y_tr = x.iloc[tr_idx].copy(), y.iloc[tr_idx]
@@ -149,6 +150,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         test_pred += model.predict_proba(x_te, iteration_range=rng)[:, 1] / config.N_FOLDS
         score = roc_auc_score(y.iloc[va_idx], oof[va_idx])
         fold_scores.append(score)
+        best_iters.append(int(model.best_iteration))
         print(f"[fold {fold}] AUC = {score:.6f} (best_iter={model.best_iteration})")
         if wandb_run is not None:
             wandb_run.log({"fold": fold, "fold_auc": score, "best_iter": model.best_iteration})
@@ -172,6 +174,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         features=feat_cols,
         cv_scores=fold_scores,
         params={**xgb_params, "seed": config.SEED, "n_estimators": n_estimators},
+        best_iters=best_iters,
         notes=notes or f"OOF AUC={oof_auc:.6f}; {te_note}",
     )
     print(f"로그 저장: {log_path}")

@@ -1,13 +1,16 @@
-"""LightGBM 학습 루프 (StratifiedKFold OOF) — Hydra 설정 기반.
+"""CatBoost 학습 루프 (StratifiedKFold OOF) — M4 앙상블 다양성 (#10).
+
+exp_016 파이프라인(동일 fold·driver_te·외부증강)을 그대로 미러링하되 모델 fit/predict
+만 CatBoost(GPU)로 교체한다. 검증된 LGBM `train.py` 는 건드리지 않는다(회귀 위험 0).
+
+CatBoost 는 범주형을 코드가 아닌 **값(문자열)** 으로 처리하므로 XGB 처럼 고정
+CategoricalDtype 정렬이 필요 없다. 단, 범주형에 NaN 이 있으면 에러이므로(원본 Compound
+66행) 플레이스홀더 문자열로 채운다. 대칭 트리 구조라 LGBM/XGB(leaf-wise)와 예측이
+달라 앙상블 다양성에 기여한다.
 
 실행:
-    uv run python -m src.train exp_id=exp_001 "notes='lgbm baseline'"   # notes 특수문자는 작은따옴표
-    uv run python -m src.train exp_id=exp_002 features=driver_te          # 타깃 인코딩
-    uv run python -m src.train exp_id=exp_003 model.params.num_leaves=127  # 파라미터 오버라이드
-    uv run python -m src.train -m model.params.num_leaves=63,127,255       # 스윕(멀티런)
-
-- 튜닝/실험 노브는 conf/ (Hydra), 구조적 상수(경로·컬럼·CV·W&B project)는 src/config.py.
-- fold 별 AUC, OOF 예측, test 폴드평균 예측, JSON 로그, W&B 기록.
+    uv run python -m src.train_catboost exp_id=exp_020 model=catboost features=driver_te \
+        augment.enabled=true augment.weight=1.0 use_wandb=false "notes='catboost gpu diversity'"
 """
 
 from __future__ import annotations
@@ -15,20 +18,22 @@ from __future__ import annotations
 from typing import Any
 
 import hydra
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
+from catboost import CatBoostClassifier
 from omegaconf import DictConfig, OmegaConf
 from sklearn.metrics import roc_auc_score
 
 from src import config, cv, data, encoders, features, utils
 
+_CAT_NAN = "__nan__"  # CatBoost 는 범주형 NaN 불가 → 플레이스홀더 (원본 Compound 66행)
+
 
 def run(cfg: DictConfig) -> dict[str, Any]:
-    """학습/검증/추론 전체 파이프라인을 실행한다.
+    """CatBoost 학습/검증/추론 파이프라인을 실행한다 (exp_016 미러, GPU).
 
     Args:
-        cfg: Hydra 설정 (exp_id, notes, use_wandb, model.*, features.*).
+        cfg: Hydra 설정 (exp_id, notes, use_wandb, model.*, features.*, augment.*).
 
     Returns:
         cv_mean, cv_std, fold_scores, log_path 를 담은 dict.
@@ -40,14 +45,8 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     notes: str = cfg.notes
     use_wandb: bool = cfg.use_wandb
 
-    # 튜닝 노브(Hydra) + 인프라 값(구조적, src.config) 주입
-    lgb_params: dict[str, Any] = {
-        **OmegaConf.to_container(cfg.model.params, resolve=True),
-        "seed": config.SEED,
-        "n_jobs": -1,
-        "verbose": -1,
-    }
-    num_boost_round: int = cfg.model.num_boost_round
+    cat_params: dict[str, Any] = OmegaConf.to_container(cfg.model.params, resolve=True)
+    iterations: int = cfg.model.num_boost_round
     early_stopping: int = cfg.model.early_stopping
     te_smoothing: float = cfg.features.target_encode_smoothing
     aug_enabled: bool = cfg.augment.enabled
@@ -69,11 +68,9 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     test_df = features.build_features(data.load_test())
     feat_cols = features.get_feature_cols(train_df)
 
-    # ablation: conf/features 의 drop_cols 에 지정된 컬럼은 모델 입력에서 제외
     drop_cols = list(cfg.features.drop_cols)
     feat_cols = [c for c in feat_cols if c not in drop_cols]
 
-    # 타깃 인코딩 대상은 native categorical 에서 제외 (fold-내 OOF 로 float 치환됨)
     te_cols = [c for c in cfg.features.target_encode_cols if c in feat_cols]
     cat_cols = [c for c in config.CATEGORICAL_COLS if c in feat_cols and c not in te_cols]
 
@@ -81,7 +78,6 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     y = train_df[config.TARGET_COL].astype(int)
     x_test = test_df[feat_cols]
 
-    # 외부 원본 증강 (train 전용). 검증/test 엔 절대 미포함. #8 참조.
     x_src = y_src = None
     if aug_enabled:
         src_df = features.build_features(data.load_source_augmentation())
@@ -89,60 +85,67 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         y_src = src_df[config.TARGET_COL].astype(int)
         print(f"[augment] 원본 {len(x_src):,}행 추가 (weight={aug_weight})")
 
+    # CatBoost: 범주형을 문자열 값으로 처리 + NaN 은 플레이스홀더로 채움.
+    def prep_cats(df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        for col in cat_cols:
+            df[col] = df[col].astype(object).where(df[col].notna(), _CAT_NAN).astype(str)
+        return df
+
+    x = prep_cats(x)
+    x_test = prep_cats(x_test)
+    if aug_enabled:
+        x_src = prep_cats(x_src)
+
     oof = np.zeros(len(train_df))
     test_pred = np.zeros(len(test_df))
     fold_scores: list[float] = []
     best_iters: list[int] = []
 
     for fold, (tr_idx, va_idx) in enumerate(cv.get_folds(y)):
-        x_tr, y_tr = x.iloc[tr_idx], y.iloc[tr_idx]
-        x_va = x.iloc[va_idx]
+        x_tr, y_tr = x.iloc[tr_idx].copy(), y.iloc[tr_idx]
+        x_va = x.iloc[va_idx].copy()
         x_te = x_test
 
         # ⚠️ 누수 방지: 타깃 인코딩은 fold 의 train 부분(대회 행)으로만 fit.
         if te_cols:
             enc = encoders.OOFTargetEncoder(te_cols, smoothing=te_smoothing)
-            x_tr = enc.fit_transform_train(x_tr, y_tr)  # train: 내부 OOF
-            x_va = enc.transform(x_va)                  # valid: 전체 train fold 통계
-            x_te = enc.transform(x_test)                # test: 전체 train fold 통계
+            x_tr = enc.fit_transform_train(x_tr, y_tr)
+            x_va = enc.transform(x_va)
+            x_te = enc.transform(x_test)
 
-        # 외부 원본 증강: 대회 train fold 에만 추가 (검증/test 미포함). 가중치로 영향 제어.
-        # TE 는 대회 행으로만 fit 됐고, 원본은 그 매핑으로 transform (미등장 Driver→전역평균).
+        # 외부 원본 증강: 대회 train fold 에만 추가 (검증/test 미포함).
         w_tr = None
         if aug_enabled:
             n_comp = len(x_tr)
-            x_src_f = enc.transform(x_src) if te_cols else x_src
+            x_src_f = enc.transform(x_src) if te_cols else x_src.copy()
             x_tr = pd.concat([x_tr, x_src_f], ignore_index=True)
-            y_tr = pd.concat([y_tr.reset_index(drop=True), y_src.reset_index(drop=True)], ignore_index=True)
-            for col in cat_cols:  # concat 후 category dtype 복원 (union 카테고리)
-                x_tr[col] = x_tr[col].astype("category")
+            y_tr = pd.concat(
+                [y_tr.reset_index(drop=True), y_src.reset_index(drop=True)], ignore_index=True
+            )
             w_tr = np.concatenate([np.ones(n_comp), np.full(len(x_src_f), aug_weight)])
 
-        dtrain = lgb.Dataset(x_tr, y_tr, categorical_feature=cat_cols, weight=w_tr)
-        dvalid = lgb.Dataset(x_va, y.iloc[va_idx], categorical_feature=cat_cols)
-        model = lgb.train(
-            lgb_params,
-            dtrain,
-            num_boost_round=num_boost_round,
-            valid_sets=[dvalid],
-            callbacks=[
-                lgb.early_stopping(early_stopping, verbose=False),
-                lgb.log_evaluation(0),
-            ],
+        model = CatBoostClassifier(
+            iterations=iterations,
+            early_stopping_rounds=early_stopping,
+            cat_features=cat_cols,
+            random_seed=config.SEED,
+            **cat_params,
         )
-        oof[va_idx] = model.predict(x_va, num_iteration=model.best_iteration)
-        test_pred += model.predict(x_te, num_iteration=model.best_iteration) / config.N_FOLDS
+        model.fit(x_tr, y_tr, sample_weight=w_tr, eval_set=(x_va, y.iloc[va_idx]), verbose=False)
+        best_iter = model.get_best_iteration()
+        oof[va_idx] = model.predict_proba(x_va)[:, 1]
+        test_pred += model.predict_proba(x_te)[:, 1] / config.N_FOLDS
         score = roc_auc_score(y.iloc[va_idx], oof[va_idx])
         fold_scores.append(score)
-        best_iters.append(int(model.best_iteration))
-        print(f"[fold {fold}] AUC = {score:.6f} (best_iter={model.best_iteration})")
+        best_iters.append(int(best_iter))
+        print(f"[fold {fold}] AUC = {score:.6f} (best_iter={best_iter})")
         if wandb_run is not None:
-            wandb_run.log({"fold": fold, "fold_auc": score, "best_iter": model.best_iteration})
+            wandb_run.log({"fold": fold, "fold_auc": score, "best_iter": best_iter})
 
     oof_auc = roc_auc_score(y, oof)
     print(f"\nOOF AUC = {oof_auc:.6f} | mean={np.mean(fold_scores):.6f} std={np.std(fold_scores):.6f}")
 
-    # OOF & test 예측 저장
     config.OOF_DIR.mkdir(parents=True, exist_ok=True)
     config.SUBMISSION_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({config.ID_COL: train_df[config.ID_COL], "oof": oof}).to_csv(
@@ -158,7 +161,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         model=cfg.model.name,
         features=feat_cols,
         cv_scores=fold_scores,
-        params=lgb_params,
+        params={**cat_params, "seed": config.SEED, "iterations": iterations},
         best_iters=best_iters,
         notes=notes or f"OOF AUC={oof_auc:.6f}; {te_note}",
     )

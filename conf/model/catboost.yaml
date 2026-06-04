@@ -1,0 +1,18 @@
+# CatBoost 하이퍼파라미터 (M4 앙상블 다양성, #10). GPU(task_type) 실행.
+# 대칭 트리(symmetric)는 LGBM/XGB 의 leaf-wise 와 구조가 달라 앙상블 다양성에 유리.
+# seed 는 train_catboost.py 가 src.config 기준 주입. 튜닝은 M5(ADR #013) 이후.
+# ⚠️ GPU + categorical 에선 rsm(colsample) 미지원 → 생략. subsample 은 Bernoulli 부트스트랩으로.
+name: catboost
+params:
+  loss_function: Logloss
+  eval_metric: AUC
+  learning_rate: 0.05
+  depth: 6
+  l2_leaf_reg: 3.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.8
+  task_type: GPU
+  devices: "0"
+num_boost_round: 5000
+early_stopping: 200
