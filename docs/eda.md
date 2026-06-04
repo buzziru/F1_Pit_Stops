@@ -43,7 +43,7 @@
   - TyreLife: 1~5랩 5.1% → 31+랩 41.4% (단조 증가, 강력)
   - RaceProgress: 40~60% 구간 36.9% (피트 윈도우 집중), 초반 8.6%·후반 11.2%
 - **Driver(887)**: test Driver 801개 전원 train 존재 (coverage 100%), train only 86개. 양성률 std=0.099 → native categorical 우선, OOF TE와 실험 비교(exp_002 vs exp_003)
-- **train/test 드리프트**: Adversarial AUC=0.5012 (seed=42) → 드리프트 없음, StratifiedKFold 유효
+- **train/test 분포 변화**: Adversarial AUC=0.5012 (seed=42) → 분포 변화 없음, StratifiedKFold 유효
 - **파생피처 누수**: shift 재현 불가(corr<0.25), 미래 누수 직접 증거 없음. `LapTime_Delta` raw corr=-0.005로 낮지만 **|delta|≤0.3 안정 구간 피트율 2.6% vs 나머지 26.1%** (W자 비선형) → 이진/구간 피처로 변환 시 강력. `Cumulative_Degradation`: 10분위 단조성 corr=-0.83, <-50(피트 직후) 27.9% / -5~0 11.7%. 둘 다 구간화 가치 있음. (eda_02)
 
 ## 6. LapTime·열화 심층 (2026-06-02, eda_02)
