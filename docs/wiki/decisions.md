@@ -2,6 +2,17 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [019] RealMLP 전용 피처 분기 개방 — ADR #010 기각의 비(非)전이 (exp_024+ 계획) — 2026-06-04
+- **결정**: RealMLP(non-GBDT)에 한해 **기각/미시도 피처를 재검토하는 FE 분기를 연다**. ADR #015("다양성용 신규 FE 금지")의 **표적 예외 확장** — 단, **RealMLP 전용 피처셋**(GBDT 파이프라인 미적용)으로만, **판정은 블렌드 OOF + GBDT corr**(단독 아님, #015 레버4). 상세·후보·프로토콜: `docs/wiki/realmlp_feature_divergence.md`.
+- **근거(원리)**: 기각의 대부분은 ADR #010("GBDT 단조변환 불변·native split이 임계 최적화")에 근거하나 **이는 GBDT 전용** — MLP는 단조변환 불변이 아니고 native split도 없어 **"트리가 이미 뽑는다"가 성립 안 함**. #015의 'FE 공간 소진'도 GBDT 정확도 기준이라 메커니즘 다른 RealMLP엔 재개방.
+- **근거(외부 확증, kaggle-researcher)**: S6E5 **8위 RealMLP가 digit features·frequency encoding·target encoding 실사용**. RealMLP_TD 내장(robust scaling+smooth clip+**PLR 수치임베딩**)→외부 정규화 중복. 고카디 Driver는 **regularized TE(float) > embedding**(문헌)→`driver_te` 재사용(#018) 검증. 2위 TabM은 `rtdl_num_embeddings` 사용.
+- **후보 우선순위 (8위 yekenot 실코드 반영, 2026-06-04 갱신)**: ①산술 상호작용(yekenot 5개) ②quantile 비닝·floor-범주화 ③범주 cross+그 cross에만 TE(Race×Compound/Race×Year) ④cyclical(RaceProgress sin/cos) ⑤field_pit_rate 부활(레버4). 낮음: is_stable_delta·외부정규화·Driver×Race TE.
+- **인코딩 확정 결정 (2026-06-04)**: ① **고카디 Driver = TE 유지(`driver_te`), embedding 아님** — RealMLP 고카디 embedding 은 논문(arXiv:2407.04491) 검증 약함·reg-TE>embedding(2104.00629). yekenot 은 Driver embedding+count 였으나 우리는 분기. ② **Race/Compound frequency enc 미사용** — 저카디라 임베딩 중복(실측 freq AUC<TE·종속). 상세: `realmlp_feature_divergence.md`.
+- **8위 실코드 분석**: `yekenot/ps-s6-e5-realmlp-pytabkit`(CV~0.954) = 상호작용+floor범주화+count+quantile비닝+cross+TE(cross만), `n_ens=20`/`n_epochs=5` 배깅·튜닝. "digit features"(리서처 추측)는 미사용. 우리 exp_023(raw+default)은 baseline.
+- **순서·게이트**: exp_023 baseline(공유피처) OOF·corr 선확보 → 1-fold 벤치 스크리닝 → 5-fold 블렌드 판정. digit은 합성신호 의존이라 EDA 사전검증.
+- **트레이드오프/리스크**: 모델별 피처 분기 = 파이프라인 복잡↑·재현부담(ADR #015가 경계했던 비용). 따라서 **RealMLP 전용·블렌드 판정·게이트**로 통제. 절대이득 불확실(digit 추측 포함). 미시도 신규(freq·cyclical)는 #015 레버4 밖이라 본 ADR로 별도 승인.
+- **출처**: 8위 L5 ensemble / 2위 TabM 노트북 / RealMLP arXiv:2407.04491 / reg-TE arXiv:2104.00629 / pytabkit.
+
 ## [018] non-GBDT 다양성 — RealMLP 도입 계획 (exp_023) — 2026-06-04 (계획, 미실행)
 - **결정**: M4 4번째 다양성 모델로 **RealMLP**(`pytabkit`) 도입. GBDT 3종(LGBM/XGB/CatBoost, OOF 상관 0.985~0.994)과 **메커니즘이 다른 non-GBDT(MLP 계열)**로 decorrelation 확보가 목표. 차순위 후보 **TabM**(동일 pytabkit API), TabICLv2(GPU 50GB) 는 보류.
 - **근거 (Kaggle 리서치)**:

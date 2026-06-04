@@ -15,6 +15,9 @@
 - `experiments/` — 주요 실험 회고 (가설 → 결과 → 결론). exp 단위로 추가.
   - [`exp_002_003_is_stable_delta.md`](experiments/exp_002_003_is_stable_delta.md) — is_stable_delta ablation (기각): 낮은 corr≠무용, 이진화 정보손실
   - [`exp_004_driver_te.md`](experiments/exp_004_driver_te.md) — Driver OOF 타깃 인코딩 (채택, +0.00559): 고카디널리티는 OOF TE > native cat
+  - [`exp_008_011_group1_fe.md`](experiments/exp_008_011_group1_fe.md) — 1번 그룹 파생피처 (기각·revert): #010 법칙 — 트리가 raw 에서 뽑는 정보는 무용
+  - [`exp_012_016_external_aug.md`](experiments/exp_012_016_external_aug.md) — 외부 원본 데이터 train 증강 (채택·신기록): fold train 에만 추가, 검증은 대회 only
+  - [`exp_019_022_m4_ensemble.md`](experiments/exp_019_022_m4_ensemble.md) — M4 앙상블 XGB/CatBoost/3-way 블렌드 (채택·제출 신기록): GBDT 동질(corr 0.99)→non-GBDT 필요
 - `domain/` — F1 피트전략 등 도메인 지식 메모.
 
 ## 작성 규칙
