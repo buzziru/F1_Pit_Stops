@@ -1,0 +1,16 @@
+{
+  "id": "buzziru/realmlp-v2-stage1-screen",
+  "title": "RealMLP v2 stage1 screening ep64 n_ens4 fold0",
+  "code_file": "realmlp_v2_stage1.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [
+    "buzziru/f1-pit-src",
+    "aadigupta1601/f1-strategy-dataset-pit-stop-prediction"
+  ],
+  "competition_sources": ["playground-series-s6e5"],
+  "kernel_sources": []
+}

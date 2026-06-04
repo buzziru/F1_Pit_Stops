@@ -2,10 +2,13 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-04 (**M4 스태킹 신기록 제출**: stack_v4 균등 Private 0.95273. RealMLP FE·LGBM 튜닝·year-cat·스태킹 합작. 진행 중 작업 없음 — 다음은 새 모델군/마무리 판단.)_
+_최종 갱신: 2026-06-04 (M4 스태킹 신기록 stack_v4 균등 Private 0.95273 제출. **RealMLP v2 1단계 스크리닝 진행 중**(ep64×n_ens4 배깅, Kaggle). 계획 `docs/wiki/realmlp_v2_plan.md`.)_
 
-## 🟢 현재 상태 — 진행 중 백그라운드 없음
-- 이번 세션 모든 실험·잡 완료·회수됨. 미커밋은 정리·커밋 완료(아래 ✅).
+## 🟡 진행 중 (다음 세션 회수 — 첫 작업)
+- **RealMLP v2 1단계 스크리닝** (Kaggle P100, RUNNING): slug `buzziru/realmlp-v2-stage1-screening-ep64-n-ens4-fold0`. ep64×n_ens4(배깅) 1-fold, `features=realmlp_fe_yearcat`+aug.
+  - 회수: `set -a; . ./.env; set +a; uv run kaggle kernels output buzziru/realmlp-v2-stage1-screening-ep64-n-ens4-fold0 -p experiments/_kaggle_out/exp_031/`
+  - **게이트(`realmlp_v2_plan.md`)**: fold0 **≥ 0.9492**(exp_024 fold0 0.949893 −0.0007 이내) → **2단계**(n_ens 배깅↑ + Stint(5+)cat + yekenot arch 차용, 5-fold) / 미만 → 싼-배깅 포기, 256ep+n_ens 2~3(Lightning A100) 폴백 검토 or v2 종료.
+  - ADR #013 개정2(RealMLP 선행 허용), full Optuna 금지.
 
 ## 📈 현재 최고
 - **🏆 LB 최고(제출됨)**: **stack_v4 균등 4-way** — **Public 0.95203 / Private 0.95273**. 파일 `experiments/submissions/stack_v4_equal.csv`. logistic 도 제출(Private 0.95271). 기존 3-way(Private 0.95165) 대비 **+0.00108**. OOF≈Private 갭 +0.00013(#006).
@@ -15,7 +18,7 @@ _최종 갱신: 2026-06-04 (**M4 스태킹 신기록 제출**: stack_v4 균등 P
 ## 🔜 다음 할 일 (우선순위)
 > 스택이 현 멤버로는 ~천장(0.9529). 추가 도약은 **새 모델군** 또는 RealMLP 강화. 또는 마무리.
 1. **(큰 레버) 새 모델군 1개 추가 → 재스택** — TabM(2위 사용, pytabkit 동일 API) 등 non-GBDT. 상관 낮으면 스택 도약 여지. 게이트=스택 가중.
-2. **RealMLP v2** — Year + **Stint(5+ 버킷) categorical**(#12 백로그). RealMLP가 이미 스택 가중 0.26 받으므로 정당. 1-fold 스크리닝 → 5-fold.
+2. **RealMLP v2 (진행 중 — `realmlp_v2_plan.md`)** — 1단계 회수→게이트. 통과 시 2단계(배깅+Stint(5+)cat+arch). 핵심 레버=배깅(`n_ens`), full Optuna 금지.
 3. **seed averaging**(#016, 미적용) — 최종 단계 분산감소. 동일 fold·모델 seed만.
 4. **(또는) 마무리** — 0.95273은 견고한 기록. 회고가 캡스톤. 추가 미세최적은 한계이득.
 - ⚠️ **kill_criterion 선언 후 스파이크**(과몰입 가드, `conf/config.yaml`). 탐색 전 "이득 X 미만이면 보류" 명시.

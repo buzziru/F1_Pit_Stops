@@ -95,6 +95,7 @@
 - **반영**: 이슈 #10(M4 Ensemble, 활성) / #11(M5 Tuning, blocked). NEXT_SESSION 우선순위 재정렬, CLAUDE.md 모델링 순서 명시.
 - **트레이드오프**: 튜닝 안 된 개별 모델로 앙상블을 먼저 구성 → 단일 모델 최고점은 잠시 미달일 수 있으나, 최종 앙상블 기준 효율이 목표. 다양성 확보 후 일괄 튜닝.
 - **개정 (2026-06-04)**: LGBM Optuna 튜닝(`src/tune_lgbm.py`, exp_026)을 앙상블 확정 **前 선행** — 원 결정의 예외. **사유**: Kaggle GPU 가 RealMLP/CatBoost 로 점유된 동안 유휴 **로컬 CPU 를 생산적으로 활용**(GPU·CPU 병렬 진행). 원 연기 사유(사전 과튜닝→다양성↓·앙상블 우선 ROI)는 유효하나, *앙상블 우선 순서를 깨지 않는 병렬 작업*이라 허용. **가드**: 튜닝 결과는 단독 OOF 가 아니라 **스택 OOF 로 채택 판정**(과적합·Public 갭 #006), 앙상블 우선 원칙 불변. ⚠️ CPU 경합 시 사용자 확인 후 스케줄(`ask-before-overlap`). 후속으로 `kill_criterion` 사전 중단조건 필드 도입(`workflow_retrospective.md`).
+- **개정2 (2026-06-04)**: **RealMLP v2**(배깅 `n_ens` + 싼-레시피 lr/epoch + yekenot arch 차용)도 앙상블 확정 前 선행 허용. 목적 = **MLP 배깅 활성화로 스택 멤버 강화**(exp_024 가중 0.26). full Optuna 스터디는 **여전히 보류**(RealMLP run 3.7h, 비현실적). 채택은 **스택 게이트**(meta-OOF +0.0003↑ or 가중 상승), 미만 시 exp_024 유지. 계획·1-fold 스크리닝: `realmlp_v2_plan.md`.
 
 ## [012] cross-row 필드 피처(field_pit_rate) 기각 — #010 통과해도 raw 가 신호를 흡수 — 2026-06-04
 - **결정**: 동일 `(Race,Year,LapNumber)` LOO 필드 피트율(`PitStop` 집계, 후보2)을 **기각·revert**. exp_017 = exp_016 골격 + `field_pit_rate`.
