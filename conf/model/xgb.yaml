@@ -1,0 +1,17 @@
+# XGBoost 하이퍼파라미터 (M4 앙상블 다양성, #10). LGBM(num_leaves=63 등)과 대응되게 기본값.
+# seed/n_jobs 는 train_xgb.py 가 src.config 기준 주입. 튜닝은 M5(ADR #013) 이후.
+name: xgb
+params:
+  objective: binary:logistic
+  eval_metric: auc
+  tree_method: hist
+  grow_policy: lossguide   # leaf-wise (LGBM num_leaves 대응)
+  max_leaves: 63
+  max_depth: 0             # 0 = 무제한 (lossguide)
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 5
+  reg_lambda: 1.0
+num_boost_round: 5000
+early_stopping: 200
