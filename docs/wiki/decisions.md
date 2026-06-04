@@ -2,6 +2,13 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [012] cross-row 필드 피처(field_pit_rate) 기각 — #010 통과해도 raw 가 신호를 흡수 — 2026-06-04
+- **결정**: 동일 `(Race,Year,LapNumber)` LOO 필드 피트율(`PitStop` 집계, 후보2)을 **기각·revert**. exp_017 = exp_016 골격 + `field_pit_rate`.
+- **근거 (exp_016 OOF 0.950959 기준)**: exp_017 OOF **0.950687** (Δ**−0.00027**), **5/5 fold 전부 음수**(−0.00006~−0.00039, std 동급). 단변량은 강했으나(vs PitNextLap corr **0.282**, 데이터셋 단일 피처 최고·RaceProgress 와 0.139 로 독립) OOF 에선 일관 하락.
+- **해석 (#010 정련)**: 이 피처는 #010 게이트를 **통과**한다 — 단일 행에 없는 깨끗한 cross-row 동시점 집계(누수 없음, OOF 불필요). 그럼에도 기각된 이유는 **`Race`·`LapNumber`(native)와 `PitStop` 이 같은 "랩별 피트 윈도 강도"를 트리 안에서 이미 span** 하기 때문. corr 0.282 는 그 공통축 투영일 뿐, LOO 추정 노이즈만 순증. → **#010 "트리가 못 뽑는 정보" 통과는 필요조건이지 충분조건이 아니다**: 새 정보가 기존 피처들이 합쳐서 만드는 신호와 중복이면 corr 가 높아도 음수.
+- **밀도 메모(기각 무관, 재사용 가치)**: race-lap `(Race,Year,LapNumber)` 중앙 58행(≤3행 8.7%) → LOO 추정 자체는 안정. `(Race,Year,Driver)` 그룹은 평균 10.75랩이나 **연속 비율 0.8%**(비연속 부분샘플).
+- **트레이드오프**: 후보1(컴파운드 규정)은 사전 분석에서 Stint 통제 시 신호 소멸(0.342 vs 0.332)로 미실험 기각. 후보3(Driver×Race TE)은 backlog. 이슈 #9. 평가 원문: `docs/idea/FE_IDEA.md`(사용자 소유).
+
 ## [011] 외부 원본 데이터 train 증강 채택 (검증은 대회 fold만) — 2026-06-03
 - **결정**: S6E5 추정 원본(`aadigupta1601/f1-strategy-dataset-pit-stop-prediction`, 101,371행)을 **대회 train 에 증강**한다. 각 fold 의 **train 부분에만** 원본을 합치고 **검증/OOF/test 는 대회 데이터로만**. sample weight=1.0. exp_016 = driver_te + 증강이 **신기록**.
 - **근거**: exp_016 OOF **0.950959** / Public **0.95065** / Private **0.95139** — exp_004 대비 OOF Δ+0.00144·Public Δ+0.00132·Private Δ+0.00135, 전 fold 일관 상승. plain 에서도 +0.00174(weight 단조 증가).
