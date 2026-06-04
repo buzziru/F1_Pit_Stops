@@ -128,10 +128,30 @@ def _objective(trial: optuna.Trial, folds: list[dict[str, Any]], y: np.ndarray) 
     return roc_auc_score(y, oof)
 
 
+class NoImprovementStop:
+    """best 가 patience trial 연속 무개선이면 study.stop() (과몰입 가드, study-level)."""
+
+    def __init__(self, patience: int):
+        self.patience = patience
+        self.best: float | None = None
+        self.stale = 0
+
+    def __call__(self, study: "optuna.Study", trial: "optuna.trial.FrozenTrial") -> None:
+        v = study.best_value
+        if self.best is None or v > self.best + 1e-9:
+            self.best, self.stale = v, 0
+        else:
+            self.stale += 1
+            if self.stale >= self.patience:
+                print(f"[no-improve-stop] {self.patience} trial 연속 무개선 → 중단 (best {v:.6f})")
+                study.stop()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--trials", type=int, default=40)
     ap.add_argument("--timeout", type=int, default=None, help="초 단위 상한(선택)")
+    ap.add_argument("--patience", type=int, default=15, help="best 무개선 N trial 연속 시 중단")
     args = ap.parse_args()
 
     utils.seed_everything(config.SEED)
@@ -152,6 +172,7 @@ def main() -> None:
         lambda t: _objective(t, folds, y),
         n_trials=args.trials,
         timeout=args.timeout,
+        callbacks=[NoImprovementStop(args.patience)],
         show_progress_bar=False,
     )
 
