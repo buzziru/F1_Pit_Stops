@@ -43,3 +43,4 @@ RealMLP 경로(`train_realmlp.py`·`add_realmlp_features`·`realmlp_fe`)+헤드�
 ## 후속 의존성
 - ⚠️ Tier-1·2로 `features.py`·`utils.py`·`train_realmlp.py`·`conf/` 변경 → Kaggle src Dataset **재push**(`push_src_dataset.sh version`) 후에야 exp_024(Kaggle) 반영. exp_024 노트북은 cfg `features` 를 `OmegaConf.load('.../conf/features/realmlp_fe.yaml')` 로(기존 driver_te 대체).
 - 현재 진행 중 exp_023 baseline(구 dataset)은 **여전히 #1 버그 영향** — 완주 시 로그 쓰기 실패하나 OOF/submission은 `kernels output`으로 회수 가능.
+- **exp_023 진행(2026-06-04 갱신)**: Kaggle P100, `.exp_log` 기준 3/5 fold 완료(fold0 0.948021·fold1 0.945496·fold2 0.942450, fold당 ~44분). 회수·블렌드 판단은 **다음 세션**(NEXT_SESSION #1). 회고는 `experiments/exp_023_realmlp.md`(신규 예정)에 정리.

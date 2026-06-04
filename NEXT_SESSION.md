@@ -2,10 +2,21 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-04 (M4 — CatBoost exp_022(iter15000) 채택, **3-way 블렌드 제출 신기록 Public 0.95084/Private 0.95165**. best_iter 로깅 신설. 다음: RealMLP(exp_023, ADR #018))_
+_최종 갱신: 2026-06-04 (RealMLP **exp_023 Kaggle P100 실행 중**(3/5 fold 완료, fold AUC 0.948/0.945/0.942). 코드리뷰 후속 **Tier-1·2·3 리팩토링 완료**(#12). **다음 세션: exp_023 산출물 회수 + 블렌드 판단**)_
+
+## 🟡 진행 중 — exp_023 RealMLP (Kaggle P100, 다음 세션 회수)
+- **상태**: Kaggle GPU 커널 실행 중. 로그(`.exp_log`) 기준 **3/5 fold 완료** — fold0 **0.948021** / fold1 **0.945496** / fold2 **0.942450** (3-fold 평균 ≈0.9453, LGBM OOF 0.9439 대비 우위). fold당 ~44분, 완주 ETA 갱신시점 기준 ~1.5h.
+- **설정**: baseline(구 dataset) — `features=driver_te`(TE=Driver만, FE 미적용), `device=cuda`, n_cv=1, n_epochs=256, augment weight=1.0. RealMLP는 early-stopping 없이 고정 256ep(best_iter cap 점검 비대상).
+- ⚠️ **이 커널은 Tier-1(#1 LOG_DIR) 수정 前 dataset** → 완주 직후 JSON 로그 쓰기 크래시 가능. 단 OOF·submission CSV는 로그보다 **먼저** 저장되므로 안전 → `kaggle kernels output`으로 회수 가능.
+- **다음 세션 첫 작업** 은 아래 "🔜 다음 할 일" 1번 참조.
 
 ## 🟢 현재 상태
 - 프로젝트 골격 완성: `src/`(config·data·features·cv·train·predict·utils·encoders·eda_utils), `docs/`, `experiments/`, `pyproject.toml`, `.gitignore`
+- **코드리뷰 후속 리팩토링 완료 (#12, ADR/계획 `docs/wiki/realmlp_refactor_plan.md`)**:
+  - Tier-1: `log_experiment` LOG_DIR 동결 버그 수정(호출시점 해석), cyclical `rp_sin/rp_cos` 제거, RealMLP `aug_weight≠1.0` hard error, 중복 `.copy()` 제거
+  - Tier-2: RealMLP 전용 FE를 `conf/features/realmlp_fe.yaml` 그룹으로(`feature_builder`+`target_encode_cols:[Driver,Race_Compound,Race_Year]`). 루트 `realmlp_fe` 플래그·`REALMLP_CROSS_COLS` 제거
+  - Tier-3: `src/train_common.py`의 `run_oof_cv(prepare, fit_predict)` 공유 골격으로 xgb/catboost/realmlp 통합(각 ~80줄). **LGBM `train.py` 미변경**(ADR). 게이트 `scripts/check_fold_inputs.py`로 6케이스×5fold 입력 바이트 동일 검증 ✅
+  - backlog: #7 `device:cuda` 로컬 폴백(LOW)
 - 데이터: 대회 train 439,140×16 / test 188,165×15 + **외부 원본** `data/f1_strategy_source/f1_strategy_dataset_v4.csv`(101,371행, 증강용, git 제외)
 - 확정 설계: StratifiedKFold 5-fold(seed=42 고정·검증됨), LightGBM CPU, `is_unbalance=False`
 - **누수 방지 OOF 타깃 인코딩** — `features=driver_te`. conf 그룹: `base / driver_te`(채택) + `driver_race_te / driver_compound_te / all_te`(기각, 보존)
@@ -24,10 +35,19 @@ _최종 갱신: 2026-06-04 (M4 — CatBoost exp_022(iter15000) 채택, **3-way �
 
 ## 🔜 다음 할 일 (우선순위)
 > ⚠️ **개별 모델 튜닝은 모델 다양성·앙상블 이후로 미룸** (ADR #013). 마일스톤 M4 Ensemble → M5 Tuning 순.
-1. **(M4) RealMLP(exp_023) — non-GBDT 다양성** — `pytabkit`, GBDT와 메커니즘 달라 decorrelation 기대(S6E5 8위 핵심·단독 0.95409). 계획 **ADR #018**: 동일 fold(n_cv=1)·driver_te float 재사용·1-fold 벤치 먼저. 차순위 TabM. [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10)
-2. **GPU 전환 결정(일부 해소)** — CatBoost GPU ~18–30분 확인. XGB CPU **31.5분**/run → `device=cuda`(XGB) 검토 잔존. M5 튜닝 부담 시 재검토.
-3. **(M5 Tuning) Optuna 튜닝** — 🚫 연기(앙상블 확정 후). [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11)
-4. (옵션) #8 후속 — weight>1.0 스윙 등. 현재 weight=1.0 고정.
+
+1. **🟡 exp_023 산출물 회수 + 블렌드 판단 (이번 세션 첫 작업)**
+   - 회수: `set -a; . ./.env; set +a; uv run kaggle kernels output buzziru/<kernel-slug> -p experiments/` → `oof/exp_023.csv`·`submissions/exp_023.csv` 배치. (slug은 `kaggle/kernel-metadata.json` 참조)
+   - 검증: OOF AUC 재계산(로그상 5-fold 평균 기대 ≈0.945). JSON 로그는 LOG_DIR 버그로 유실됐을 수 있음 → 필요시 회고 문서에 수기 기록.
+   - **블렌드 판단**: 기존 3-way(exp_016+019+022, OOF 0.951642)에 exp_023(RealMLP) 추가 시 OOF 변화 측정. RealMLP는 GBDT와 상관 낮을 것으로 기대 → 4-way 또는 가중 블렌드. 개선 시 제출(마일스톤).
+   - 회고: `docs/wiki/experiments/exp_023_realmlp.md` 신규 (fold AUC·wall-clock·블렌드 결과). [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10)
+2. **exp_024 — RealMLP + FE 라운드** (exp_023 baseline 대비 FE 효과 측정)
+   - ⚠️ **선결**: Tier-1·2로 `features.py`·`utils.py`·`train_realmlp.py`·`conf/` 변경됨 → Kaggle src Dataset **재push** (`bash kaggle/push_src_dataset.sh <version>`) 후에야 반영.
+   - exp_024 노트북: cfg `features` 를 `OmegaConf.load('.../conf/features/realmlp_fe.yaml')`로(기존 driver_te 대체) → `add_realmlp_features`(상호작용5+cross2) + TE[Driver,Race_Compound,Race_Year] 적용.
+   - exp_023(baseline) vs exp_024(FE) OOF·블렌드 기여 비교 → 채택/기각 ADR.
+3. **GPU 전환 결정(일부 해소)** — CatBoost GPU ~18–30분 확인. XGB CPU **31.5분**/run → `device=cuda`(XGB) 검토 잔존. M5 튜닝 부담 시 재검토.
+4. **(M5 Tuning) Optuna 튜닝** — 🚫 연기(앙상블 확정 후). [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11)
+5. (옵션) #8 후속 — weight>1.0 스윙 등. 현재 weight=1.0 고정.
 
 ## ✅ 완료
 - exp_001 베이스라인(#2) / W&B(#4) / EDA #1+eda_02 / Hydra 분리(#007) + Python 3.11 pin(#008)
@@ -59,7 +79,8 @@ _최종 갱신: 2026-06-04 (M4 — CatBoost exp_022(iter15000) 채택, **3-way �
 - 외부데이터 사용 — 대회 규정 허용 범위 확인 권장(Playground 통상 허용)
 
 ## 🔗 열린 이슈
-- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — **진행중**(XGB✅, CatBoost·블렌드 남음)
+- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — **진행중**(XGB✅ CatBoost✅ 3-way블렌드✅, **RealMLP exp_023 회수·블렌드 남음**)
+- [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) [refactor] 코드리뷰 후속 — Tier-1·2·3 **완료**, #7 device 폴백만 backlog
 - [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11) [tuning] M5 Optuna — 🚫 연기(앙상블 후)
 - [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) [feature] 파생 피처 — **보류(parked)**, 닫지 않음. ADR #010
 - ~~#1~~✅ / ~~#2~~✅ / ~~#3~~✅ / ~~#4~~✅ / ~~#5~~✅기각 / ~~#6~~✅기각 / ~~#8 외부 증강~~✅채택 / ~~#9 cross-row FE~~✅기각
