@@ -1,0 +1,8 @@
+# RealMLP 전용 FE 그룹 (ADR #019, exp_024). build_features 후 feature_builder 훅으로
+# 상호작용 5 + 범주 cross(Race×Compound/Year) 추가, Driver+cross 를 OOF TE.
+# ⚠️ model=realmlp 전용 — GBDT 트레이너는 feature_builder 훅을 읽지 않아 cross 미생성
+#    (te_cols 의 `if c in feat_cols` 필터로 안전히 driver_te 로 폴백).
+feature_builder: add_realmlp_features
+target_encode_cols: [Driver, Race_Compound, Race_Year]
+target_encode_smoothing: 20.0
+drop_cols: []

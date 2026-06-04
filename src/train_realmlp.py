@@ -56,7 +56,8 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     te_smoothing: float = cfg.features.target_encode_smoothing
     aug_enabled: bool = cfg.augment.enabled
     aug_weight: float = cfg.augment.weight
-    realmlp_fe: bool = bool(cfg.get("realmlp_fe", False))  # ADR #019 RealMLP 전용 FE
+    # ADR #019: conf/features 그룹의 feature_builder 훅(예: realmlp_fe → add_realmlp_features)
+    feature_builder: str | None = cfg.features.get("feature_builder", None)
     if aug_enabled and aug_weight != 1.0:
         # RealMLP.fit 은 sample_weight 미지원 → weight≠1.0 은 반영 불가.
         # warn 후 무시하면 cfg/W&B 기록(weight=X)과 실제 학습(1.0)이 어긋나므로 hard error.
@@ -77,20 +78,24 @@ def run(cfg: DictConfig) -> dict[str, Any]:
             config=OmegaConf.to_container(cfg, resolve=True),
         )
 
-    train_df = features.build_features(data.load_train())
-    test_df = features.build_features(data.load_test())
-    if realmlp_fe:  # ADR #019: RealMLP 전용 파생 피처(상호작용·주기·cross)
-        train_df = features.add_realmlp_features(train_df)
-        test_df = features.add_realmlp_features(test_df)
-        print(f"[realmlp_fe] 전용 피처 추가 (cross TE: {features.REALMLP_CROSS_COLS})")
+    def build(df: pd.DataFrame) -> pd.DataFrame:
+        """build_features + (옵션) conf/features 의 feature_builder 훅 적용."""
+        df = features.build_features(df)
+        if feature_builder:
+            df = getattr(features, feature_builder)(df)
+        return df
+
+    if feature_builder:
+        print(f"[features] feature_builder={feature_builder} 적용 (ADR #019)")
+    train_df = build(data.load_train())
+    test_df = build(data.load_test())
     feat_cols = features.get_feature_cols(train_df)
 
     drop_cols = list(cfg.features.drop_cols)
     feat_cols = [c for c in feat_cols if c not in drop_cols]
 
+    # cross 컬럼은 conf/features/realmlp_fe.yaml 의 target_encode_cols 에 포함(단일 소스).
     te_cols = [c for c in cfg.features.target_encode_cols if c in feat_cols]
-    if realmlp_fe:  # cross 컬럼을 OOF TE 대상에 추가 (yekenot: cross 에만 TE)
-        te_cols += [c for c in features.REALMLP_CROSS_COLS if c in feat_cols]
     cat_cols = [c for c in config.CATEGORICAL_COLS if c in feat_cols and c not in te_cols]
 
     x = train_df[feat_cols]
@@ -99,9 +104,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
 
     x_src = y_src = None
     if aug_enabled:
-        src_df = features.build_features(data.load_source_augmentation())
-        if realmlp_fe:
-            src_df = features.add_realmlp_features(src_df)
+        src_df = build(data.load_source_augmentation())
         x_src = src_df[feat_cols]
         y_src = src_df[config.TARGET_COL].astype(int)
         print(f"[augment] 원본 {len(x_src):,}행 추가 (weight={aug_weight})")

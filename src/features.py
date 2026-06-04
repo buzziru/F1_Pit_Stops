@@ -13,9 +13,6 @@ import pandas as pd
 
 from src import config
 
-# RealMLP 전용 범주 cross (학습 fold 루프에서 OOF TE 대상) — ADR #019
-REALMLP_CROSS_COLS: list[str] = ["Race_Compound", "Race_Year"]
-
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
     """원본 컬럼으로부터 모델 입력 피처를 생성한다.
@@ -40,8 +37,8 @@ def add_realmlp_features(df: pd.DataFrame) -> pd.DataFrame:
 
     8위 yekenot 레퍼런스 기반 Phase 1: ① 산술 상호작용(비율/곱) ② 범주 cross
     (Race×Compound, Race×Year). 전부 per-row 라 누수 없음 — cross 의 타깃 인코딩은
-    학습 fold 루프의 `OOFTargetEncoder` 가 처리(REALMLP_CROSS_COLS). GBDT 는
-    ADR #010(단조변환 불변)으로 중립~유해라 미적용.
+    학습 fold 루프의 `OOFTargetEncoder` 가 처리(대상은 `conf/features/realmlp_fe.yaml`
+    의 target_encode_cols). GBDT 는 ADR #010(단조변환 불변)으로 중립~유해라 미적용.
 
     ※ RaceProgress sin/cos(주기 인코딩)는 단조(비주기) 피처에 부적절해 제거(리뷰 #2).
 

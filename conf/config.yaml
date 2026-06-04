@@ -14,9 +14,6 @@ augment:
   enabled: false   # true 면 fold 의 train 부분에만 원본 추가
   weight: 1.0      # 원본 행 sample weight (대회 행=1.0)
 
-# RealMLP 전용 파생 피처 (ADR #019, train_realmlp 만 사용). GBDT 미적용.
-realmlp_fe: false  # true 면 상호작용·주기·cross(Race×Compound/Year) TE 추가
-
 hydra:
   job:
     chdir: false   # cwd 변경 안 함 (src.config 절대경로 사용)
