@@ -161,6 +161,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         params=lgb_params,
         best_iters=best_iters,
         notes=notes or f"OOF AUC={oof_auc:.6f}; {te_note}",
+        kill_criterion=cfg.get("kill_criterion", ""),
     )
     print(f"로그 저장: {log_path}")
 

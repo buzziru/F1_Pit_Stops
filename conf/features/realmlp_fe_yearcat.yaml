@@ -1,0 +1,7 @@
+# RealMLP combined: realmlp_fe(상호작용5 + Race×Compound/Year cross + Driver/cross TE) + Year 범주형.
+# ADR #019(FE 분기) + year-cat 검증(RealMLP fold0 +0.00084). model=realmlp 전용.
+feature_builder: add_realmlp_features
+target_encode_cols: [Driver, Race_Compound, Race_Year]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year]

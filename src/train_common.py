@@ -87,6 +87,11 @@ def run_oof_cv(
 
     te_cols = [c for c in cfg.features.target_encode_cols if c in feat_cols]
     cat_cols = [c for c in config.CATEGORICAL_COLS if c in feat_cols and c not in te_cols]
+    # 모델별 추가 범주형 (예: RealMLP/CatBoost 의 Year). features 그룹 extra_categorical_cols
+    # 노브, 기본 없음 → 미지정 모델/실험은 불변. (RealMLP=embedding, CatBoost=native cat 처리)
+    for c in cfg.features.get("extra_categorical_cols", []) or []:
+        if c in feat_cols and c not in te_cols and c not in cat_cols:
+            cat_cols.append(c)
 
     x = train_df[feat_cols]
     y = train_df[config.TARGET_COL].astype(int)
@@ -107,7 +112,13 @@ def run_oof_cv(
     fold_scores: list[float] = []
     best_iters: list[int | None] = []
 
-    for fold, (tr_idx, va_idx) in enumerate(cv.get_folds(y)):
+    folds = cv.get_folds(y)
+    max_folds = cfg.get("max_folds", None)
+    if max_folds:
+        folds = folds[:max_folds]
+        print(f"[max_folds] 동일 분할의 앞 {max_folds}/{config.N_FOLDS} fold 만 실행 (스크리닝, OOF/submission 부분적)")
+
+    for fold, (tr_idx, va_idx) in enumerate(folds):
         x_tr, y_tr = x.iloc[tr_idx], y.iloc[tr_idx]
         x_va, y_va = x.iloc[va_idx], y.iloc[va_idx]
         x_te = x_test
@@ -147,8 +158,12 @@ def run_oof_cv(
                 log["best_iter"] = best_iter
             wandb_run.log(log)
 
-    oof_auc = roc_auc_score(y, oof)
-    print(f"\nOOF AUC = {oof_auc:.6f} | mean={np.mean(fold_scores):.6f} std={np.std(fold_scores):.6f}")
+    if max_folds:
+        oof_auc = float("nan")  # 부분 실행 → 전체 OOF 무의미. fold 점수만 신뢰.
+        print(f"\n[부분 실행 {len(folds)}/{config.N_FOLDS}] fold mean={np.mean(fold_scores):.6f} (OOF AUC 생략)")
+    else:
+        oof_auc = roc_auc_score(y, oof)
+        print(f"\nOOF AUC = {oof_auc:.6f} | mean={np.mean(fold_scores):.6f} std={np.std(fold_scores):.6f}")
 
     config.OOF_DIR.mkdir(parents=True, exist_ok=True)
     config.SUBMISSION_DIR.mkdir(parents=True, exist_ok=True)
@@ -170,6 +185,7 @@ def run_oof_cv(
         params={**mlp_params, "seed": config.SEED, **(log_extra or {})},
         best_iters=logged_iters,
         notes=notes or f"OOF AUC={oof_auc:.6f}; {te_note}",
+        kill_criterion=cfg.get("kill_criterion", ""),
     )
     print(f"로그 저장: {log_path}")
 

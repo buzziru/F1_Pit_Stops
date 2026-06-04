@@ -73,6 +73,7 @@ def log_experiment(
     best_iters: list[int] | None = None,
     lb_score: float | None = None,
     notes: str = "",
+    kill_criterion: str = "",
     log_dir: Path | None = None,
 ) -> Path:
     """실험 결과를 구조화 JSON 으로 저장한다 (1 실험 = 1 파일).
@@ -111,6 +112,7 @@ def log_experiment(
         "lb_score": lb_score,
         "params": params,
         "notes": notes,
+        "kill_criterion": kill_criterion,  # 스파이크 사전 중단조건(과몰입 구조적 가드, ADR #013)
     }
     path = log_dir / f"{exp_id}.json"
     path.write_text(json.dumps(record, indent=2, ensure_ascii=False))

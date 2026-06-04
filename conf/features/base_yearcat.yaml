@@ -1,0 +1,6 @@
+# base + Year 를 범주형으로 (extra_categorical_cols). CatBoost=native cat / RealMLP=embedding 대상.
+# Year 범주형 검토(사용자 2026-06-04): 4개 시즌(2022–25)·test-only 0 → 비단조 레짐 포착용.
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year]
