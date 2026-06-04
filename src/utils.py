@@ -73,7 +73,7 @@ def log_experiment(
     best_iters: list[int] | None = None,
     lb_score: float | None = None,
     notes: str = "",
-    log_dir: Path = config.LOG_DIR,
+    log_dir: Path | None = None,
 ) -> Path:
     """실험 결과를 구조화 JSON 으로 저장한다 (1 실험 = 1 파일).
 
@@ -87,11 +87,14 @@ def log_experiment(
             점검용 — best_iter 가 num_boost_round 에 붙으면 cap 상향 필요 (CLAUDE.md 원칙).
         lb_score: 리더보드 점수 (제출 후 갱신, 기본 None).
         notes: 자유 메모.
-        log_dir: 로그 저장 디렉터리.
+        log_dir: 로그 저장 디렉터리. None 이면 호출 시점의 `config.LOG_DIR` 사용
+            (기본인자 동결 방지 — Kaggle 등에서 런타임 오버라이드가 반영되게).
 
     Returns:
         저장된 JSON 파일 경로.
     """
+    if log_dir is None:
+        log_dir = config.LOG_DIR
     log_dir.mkdir(parents=True, exist_ok=True)
     scores = np.asarray(cv_scores, dtype=float)
     record: dict[str, Any] = {

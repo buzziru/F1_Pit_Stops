@@ -9,7 +9,6 @@ EDA(eda.ipynb) 결과를 바탕으로 점진적으로 채운다. 현재는 베�
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from src import config
@@ -39,10 +38,12 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 def add_realmlp_features(df: pd.DataFrame) -> pd.DataFrame:
     """RealMLP 전용 파생 피처를 추가한다 (ADR #019, GBDT 파이프라인 미적용).
 
-    8위 yekenot 레퍼런스 기반 Phase 1: ① 산술 상호작용(비율/곱) ② RaceProgress
-    주기 인코딩(sin/cos) ③ 범주 cross(Race×Compound, Race×Year). 전부 per-row 라
-    누수 없음 — cross 의 타깃 인코딩은 학습 fold 루프의 `OOFTargetEncoder` 가 처리
-    (REALMLP_CROSS_COLS). GBDT 는 ADR #010(단조변환 불변)으로 중립~유해라 미적용.
+    8위 yekenot 레퍼런스 기반 Phase 1: ① 산술 상호작용(비율/곱) ② 범주 cross
+    (Race×Compound, Race×Year). 전부 per-row 라 누수 없음 — cross 의 타깃 인코딩은
+    학습 fold 루프의 `OOFTargetEncoder` 가 처리(REALMLP_CROSS_COLS). GBDT 는
+    ADR #010(단조변환 불변)으로 중립~유해라 미적용.
+
+    ※ RaceProgress sin/cos(주기 인코딩)는 단조(비주기) 피처에 부적절해 제거(리뷰 #2).
 
     Args:
         df: build_features 적용 후 DataFrame (원본 컬럼 포함).
@@ -58,10 +59,7 @@ def add_realmlp_features(df: pd.DataFrame) -> pd.DataFrame:
     out["i_laptime_x_deg"] = (lt * deg).astype("float32")
     out["i_laptime_x_absdeg"] = (lt * deg.abs()).astype("float32")
     out["i_laptime_over_absdeg"] = (lt / (deg.abs() + 1e-6)).astype("float32")
-    # ② 주기 인코딩 (RaceProgress 0~1 → 레이스 위상, 경계 불연속 제거)
-    out["rp_sin"] = np.sin(2 * np.pi * out["RaceProgress"]).astype("float32")
-    out["rp_cos"] = np.cos(2 * np.pi * out["RaceProgress"]).astype("float32")
-    # ③ 범주 cross (문자열 → fold 내 OOF TE 로 float 치환)
+    # ② 범주 cross (문자열 → fold 내 OOF TE 로 float 치환)
     out["Race_Compound"] = out["Race"].astype(str) + "_" + out["Compound"].astype(str)
     out["Race_Year"] = out["Race"].astype(str) + "_" + out["Year"].astype(str)
     return out

@@ -59,7 +59,11 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     realmlp_fe: bool = bool(cfg.get("realmlp_fe", False))  # ADR #019 RealMLP 전용 FE
     if aug_enabled and aug_weight != 1.0:
         # RealMLP.fit 은 sample_weight 미지원 → weight≠1.0 은 반영 불가.
-        print(f"[warn] RealMLP 는 sample_weight 미지원 — aug_weight={aug_weight} 무시(plain concat)")
+        # warn 후 무시하면 cfg/W&B 기록(weight=X)과 실제 학습(1.0)이 어긋나므로 hard error.
+        raise ValueError(
+            f"RealMLP 는 sample_weight 미지원 — augment.weight={aug_weight}≠1.0 불가 "
+            "(plain concat 만). weight=1.0 으로 실행하라."
+        )
 
     wandb_run = None
     if use_wandb:
@@ -119,8 +123,9 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     fold_scores: list[float] = []
 
     for fold, (tr_idx, va_idx) in enumerate(cv.get_folds(y)):
-        x_tr, y_tr = x.iloc[tr_idx].copy(), y.iloc[tr_idx]
-        x_va = x.iloc[va_idx].copy()
+        # iloc[배열] 은 이미 copy 반환 + TE 활성 시 enc 가 새 프레임 반환 → 명시 copy 불필요.
+        x_tr, y_tr = x.iloc[tr_idx], y.iloc[tr_idx]
+        x_va = x.iloc[va_idx]
         x_te = x_test
 
         # ⚠️ 누수 방지: 타깃 인코딩은 fold 의 train 부분(대회 행)으로만 fit.
