@@ -2,6 +2,15 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [020] M4 스태킹 채택 — 신기록 Private 0.95273 (RealMLP FE·LGBM 튜닝·year-cat 합작) — 2026-06-04
+- **결정**: 4-모델 **스태킹 메타러너**를 M4 최종 앙상블로 채택(`src/stack.py`). 멤버 = LGBM-tuned(exp_030) + XGB year/stint-cat(exp_028) + CatBoost year-cat(exp_025) + RealMLP FE+year-cat(exp_024). stack_v4 **균등·logistic 둘 다 제출**.
+- **결과(신기록)**: stack_v4 **균등 Private 0.95273 / Public 0.95203**, logistic Private 0.95271/Public 0.95210. 기존 3-way(Private 0.95165) 대비 **+0.00108**. OOF≈Private 재확인(갭 +0.00013/+0.00017, #006). 균등이 Private 미세 우위(과적합 적음) → 균등 권장.
+- **도약 동력(누적)**: ① **RealMLP FE+year-cat**(exp_024, ADR #019 실행): OOF 0.944154→**0.948773**(+0.0046), 스택 logistic 가중 0.06→0.26 — 최대 기여. ② **LGBM Optuna**(exp_030, M5 선행 #013개정): 0.950959→**0.952132**(+0.0012). ③ year-cat: 전 모델 소폭+.
+- **year/stint-cat 모델별 결론(실측)**: Year-cat = 전 모델 +(CatBoost +0.00023·XGB +0.00017·RealMLP fold0 +0.00084). Stint-cat = **XGB +0.00017 채택 / CatBoost −0.00011 기각(exp_025 유지)** / RealMLP 미검증(#12 백로그). → "전 GBDT 대칭" 불성립, 모델별 상이. `extra_categorical_cols` 노브로 분기.
+- **메타러너**: nnls·logistic·rank·균등 비교, 4 멤버 다 강해 logistic≈균등(0.9529). GBDT 메타 금지(피처 소수 과적합). 판정=meta-OOF(#015)·균등 우선(#006).
+- **인프라 결론**: ① **Kaggle 헤드리스(API push) online-wandb 불가** — UserSecrets attach 가 UI 실행에만 적용·`kaggle kernels push` 엔 안 옮겨짐(확정 검증). GPU+wandb 는 **Lightning Job(`-e`)**, Kaggle 은 offline-sync/off. ② **Lightning Jobs** = `.venv` 그대로 GPU 실행(노트북 변환 불요), exp_025/028/029 검증(`lightning_jobs.md`).
+- **트레이드오프/다음**: 현 멤버로는 스택 ~천장(0.9529). 추가 도약은 **새 모델군(TabM 등)** 또는 RealMLP v2(Year+Stint(5+) cat, #12). seed averaging(#016) 미적용.
+
 ## [019] RealMLP 전용 피처 분기 개방 — ADR #010 기각의 비(非)전이 (exp_024+ 계획) — 2026-06-04
 - **결정**: RealMLP(non-GBDT)에 한해 **기각/미시도 피처를 재검토하는 FE 분기를 연다**. ADR #015("다양성용 신규 FE 금지")의 **표적 예외 확장** — 단, **RealMLP 전용 피처셋**(GBDT 파이프라인 미적용)으로만, **판정은 블렌드 OOF + GBDT corr**(단독 아님, #015 레버4). 상세·후보·프로토콜: `docs/wiki/realmlp_feature_divergence.md`.
 - **근거(원리)**: 기각의 대부분은 ADR #010("GBDT 단조변환 불변·native split이 임계 최적화")에 근거하나 **이는 GBDT 전용** — MLP는 단조변환 불변이 아니고 native split도 없어 **"트리가 이미 뽑는다"가 성립 안 함**. #015의 'FE 공간 소진'도 GBDT 정확도 기준이라 메커니즘 다른 RealMLP엔 재개방.

@@ -40,7 +40,7 @@ model: sonnet
 2. **torch 재설치**(신경망일 때): cu121 휠 + 라이브러리.
 3. **CUDA 실연산 검증**: `(torch.randn(256,256,device='cuda')@x).sum().item()` — 통과해야 P100 정상.
 4. **경로 override**: `config.TRAIN_PATH/TEST_PATH/SAMPLE_SUBMISSION_PATH/SOURCE_AUG_PATH` = Kaggle input, `OOF_DIR/SUBMISSION_DIR/LOG_DIR` = `working/{oof,submissions,logs}`.
-5. **cfg 구성**: repo `conf/*.yaml` 을 `OmegaConf.load` 재사용(Hydra 미사용), `use_wandb=false`.
+5. **cfg 구성**: repo `conf/*.yaml` 을 `OmegaConf.load` 재사용(Hydra 미사용), **`use_wandb=false`**. ⚠️ **Kaggle 헤드리스(API push) online wandb 불가**(확정 검증 2026-06-04): UserSecrets attach 는 UI 실행에만 적용되고 `kaggle kernels push` 버전엔 안 옮겨져 `ConnectionError`. wandb 추적이 필요하면 ① `WANDB_MODE=offline` 으로 돌려 `working/wandb/offline-run-*` 를 산출물로 회수 후 로컬 `wandb sync`, 또는 ② online 이 필요하면 **Kaggle 대신 Lightning Job(`-e WANDB_API_KEY`)** 사용(`docs/wiki/lightning_jobs.md`). JSON 로그·OOF 는 wandb 없이도 회수되므로 보통 `use_wandb=false` 로 충분.
 6. **학습**: `from src.train_realmlp import run; run(cfg)`.
 7. **산출물 확인**: shape/cols 출력.
 
