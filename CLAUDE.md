@@ -66,7 +66,7 @@ data/           # train/test/sample_submission  ← git 제외
 - 베이스라인: **LightGBM (CPU, 로컬)**. native categorical: `Driver, Compound, Race`
 - **불균형(19.9%) 가중 미사용** — 지표가 ROC-AUC(순위 기반)라 `is_unbalance`/`scale_pos_weight` 는 점수에 거의 영향 없거나 해로울 수 있음. 기본 `is_unbalance=False`, on/off 는 실험으로 비교.
 - 고카디널리티 `Driver`(887): **누수 방지 OOF 타깃 인코딩 구현됨** (`src/encoders.py`, fold-내 fit). `features=driver_te` 로 활성화 (`conf/features/`)
-- 이후: XGBoost / CatBoost (GPU, Kaggle) → 스태킹/블렌딩
+- 이후 순서: **모델 다양성(XGBoost / CatBoost, GPU·Kaggle) → 스태킹/블렌딩 먼저**, **개별 하이퍼파라미터 튜닝은 앙상블 이후로** (ADR #013). 마일스톤 M4 Ensemble → M5 Tuning.
 
 ## 실험 추적
 - **JSON 로그**: `experiments/logs/<exp_id>.json` (`utils.log_experiment`, 자동)

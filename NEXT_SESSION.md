@@ -20,8 +20,9 @@ _최종 갱신: 2026-06-04 (#9 cross-row 필드 피처 exp_017 기각 — ADR #0
 - 이후 실험은 **exp_016 기준** 비교.
 
 ## 🔜 다음 할 일 (우선순위)
-1. **(M4) Optuna sweeper 하이퍼파라미터 튜닝** — `hydra-optuna-sweeper`, **exp_016(driver_te + 증강) 기준** 튜닝. (이슈 미생성 — 착수 시 생성)
-2. **모델 다양성** — XGBoost / CatBoost (증강 포함) → exp_016 과 블렌딩/스태킹. 대형이면 Kaggle GPU 이관(.py→.ipynb).
+> ⚠️ **개별 모델 튜닝은 모델 다양성·앙상블 이후로 미룸** (ADR #013). 마일스톤 M4 Ensemble → M5 Tuning 순.
+1. **(M4 Ensemble) 모델 다양성** — XGBoost / CatBoost (증강 포함) → exp_016 과 OOF 상관 점검 → 블렌딩/스태킹. 대형이면 Kaggle GPU 이관(.py→.ipynb). [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10)
+2. **(M5 Tuning) Optuna sweeper 튜닝** — 🚫 **연기**(앙상블 확정 후). `hydra-optuna-sweeper`, 앙상블 구성요소/스택 기준. [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11)
 3. (옵션) #8 후속 — weight>1.0 스윙, 원본을 feature(예측값)로 쓰는 변형 등. 현재 weight=1.0 고정.
 4. (backlog) `FE_IDEA` 후보3 — Driver×Race 희소 TE, 단발 ablation 1회로 채택/기각 (기대값 낮음, ADR #009 경계).
 
@@ -43,7 +44,7 @@ _최종 갱신: 2026-06-04 (#9 cross-row 필드 피처 exp_017 기각 — ADR #0
 - ⚠️ 긴 학습은 백그라운드 시작·정상동작만 확인하고 턴 종료(블로킹 금지). 메모리 `experiment-async-workflow`.
 
 ## ⏳ 대기/보류
-- M4 튜닝 시 Optuna sweeper / Kaggle GPU 이관 시 `.py → .ipynb`
+- M5 튜닝(앙상블 후) 시 Optuna sweeper / Kaggle GPU 이관 시 `.py → .ipynb`
 - #7 핸드크래프트 파생 (ADR #010 보류, 이슈 오픈 유지)
 - 외부데이터 사용 — 대회 규정 허용 범위 확인 권장(Playground 통상 허용)
 
