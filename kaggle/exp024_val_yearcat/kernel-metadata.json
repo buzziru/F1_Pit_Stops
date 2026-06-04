@@ -1,7 +1,7 @@
 {
-  "id": "buzziru/realmlp-exp024-fe-yearcat",
-  "title": "RealMLP exp024 combined FE + Year-cat 256ep 5fold",
-  "code_file": "realmlp_exp024_fe_yearcat.ipynb",
+  "id": "buzziru/realmlp-exp024-val-yearcat",
+  "title": "realmlp exp024 val yearcat",
+  "code_file": "realmlp_exp024_val_yearcat.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true,

@@ -10,6 +10,9 @@ experiments/logs/*.json
 experiments/logs/*.run.log
 experiments/oof/
 experiments/submissions/
+experiments/tuning/
+experiments/_kaggle_out/
+experiments/outputs/
 catboost_info/
 models/
 *.pkl
