@@ -1,6 +1,6 @@
 # 리팩토링 계획·기록 — RealMLP 코드 리뷰 후속
 
-> 2026-06-04 · 이슈 [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) · 상태: **Tier-1·2 적용 완료 / Tier-3 backlog** · 출처: `/code-review`(high, 8 findings) · 관련 `REVIEW.md`·[[decisions]] #019
+> 2026-06-04 · 이슈 [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) · 상태: **Tier-1·2·3 적용 완료** (#7 device 폴백만 backlog) · 출처: `/code-review`(high, 8 findings) · 관련 `REVIEW.md`·[[decisions]] #019
 
 ## Context
 RealMLP 경로(`train_realmlp.py`·`add_realmlp_features`·`realmlp_fe`)+헤드리스 Kaggle 인프라에 `/code-review`(high) 적용 → 8 finding. **#1 LOG_DIR 동결**은 *Kaggle 완주 직후 로그 쓰기 크래시*하는 살아있는 버그(read-only `/kaggle/input` 마운트에 mkdir). 정확성 결함(Tier-1)을 즉시 제거하고, 구조개선(Tier-2)·대규모 중복제거(Tier-3)는 회귀 위험으로 게이트·시퀀싱.
@@ -14,8 +14,8 @@ RealMLP 경로(`train_realmlp.py`·`add_realmlp_features`·`realmlp_fe`)+헤드�
 | 8 | fold별 `iloc[].copy()` 낭비(fancy-index가 이미 copy + TE가 새 프레임) | LOW | CONFIRMED | **T1 ✅** |
 | 4 | `realmlp_fe` 루트 플래그+4 분기 = conf/features 그룹 대비 잘못된 altitude | MED | PLAUSIBLE | **T2 ✅** |
 | 5 | cross/TE 컬럼이 `REALMLP_CROSS_COLS`(코드)·te_cols(트레이너) 이중 소스 | MED | PLAUSIBLE | **T2 ✅** |
-| 6 | xgb/catboost/realmlp run() ~90% 중복 | MED(유지보수) | CONFIRMED | T3 |
-| 7 | `device:cuda` 기본 → 로컬 bare 실행 크래시(catboost와 동일 관행) | LOW | PLAUSIBLE | T3 |
+| 6 | xgb/catboost/realmlp run() ~90% 중복 | MED(유지보수) | CONFIRMED | **T3 ✅** |
+| 7 | `device:cuda` 기본 → 로컬 bare 실행 크래시(catboost와 동일 관행) | LOW | PLAUSIBLE | T3 (backlog) |
 | — | (REFUTED) pd.concat category→object: 스모크가 증강+FE 경로 정상 실행, pytabkit는 값 기반 | — | REFUTED | — |
 | — | (REFUTED) aug glob/assert 불일치: 마운트 dataset=v4(101371) 실측 확인 | — | REFUTED | — |
 
@@ -34,10 +34,11 @@ RealMLP 경로(`train_realmlp.py`·`add_realmlp_features`·`realmlp_fe`)+헤드�
 - **검증**: te_cols=[Driver,Race_Compound,Race_Year]·cat_cols=[Compound,Race] 라우팅 확인 + Hydra 스모크(struct-mode `.get` 동작, feature_builder 적용, 5-fold 무에러).
 - 이점: base/driver_te/*_te 와 동일 altitude, FE 변형을 config 조합으로 표현.
 
-## Tier-3 — 트레이너 중복제거 (게이트 backlog)
-- `run_oof_cv(cfg, fit_predict_fn)` 공유 헬퍼로 xgb/catboost/realmlp 통합(모델별 fit/predict 콜백).
-- **게이트(필수)**: 리팩토링 경로로 exp_019·exp_022 재실행 → `experiments/oof/exp_019.csv`·`exp_022.csv` 와 **OOF 바이트 동일**일 때만 채택. LGBM `train.py`는 ADR대로 미변경.
-- 검증모델 회귀 위험 → 별도 승인 시 진행.
+## Tier-3 — 적용 완료 (2026-06-04) — 트레이너 중복제거 (#6)
+- **신규** `src/train_common.py`: `run_oof_cv(cfg, *, prepare, fit_predict, supports_weight, log_extra)` — seed/env/wandb·build_features(+feature_builder 훅)·feat/te/cat 컬럼·fold OOF-TE+증강 concat·OOF/submission/로그·wandb 공통 골격.
+- **xgb/catboost/realmlp** = `prepare`(모델별 범주 전처리: XGB 고정 dtype / CatBoost str / RealMLP category) + `fit_predict`(모델 fit/predict) 콜백만 제공. 각 ~200줄 → ~80줄. **LGBM `train.py` 미변경**(ADR 회귀 안전).
+- **게이트(입력 동등성, GPU 불필요)**: `scripts/check_fold_inputs.py` — 모델 클래스를 더미 monkeypatch(학습 X)해 fit/predict **입력 해시**를 덤프, 리팩토링 前(git stash=커밋원본)/後 비교. **6 케이스(xgb/catboost/realmlp × TE on/off × aug on/off) × 5 fold 전부 바이트 동일** ✅ → 입력 동일·결정적 모델(seed 고정)이라 **OOF 바이트 보존 증명**. (exp_022 는 GPU라 OOF 직접재실행 불가 → 입력 동등성으로 대체, 더 엄밀·빠름.)
+- 추가 확인: RealMLP 실 CPU 스모크(realmlp_fe) 무에러.
 
 ## 후속 의존성
 - ⚠️ Tier-1·2로 `features.py`·`utils.py`·`train_realmlp.py`·`conf/` 변경 → Kaggle src Dataset **재push**(`push_src_dataset.sh version`) 후에야 exp_024(Kaggle) 반영. exp_024 노트북은 cfg `features` 를 `OmegaConf.load('.../conf/features/realmlp_fe.yaml')` 로(기존 driver_te 대체).
