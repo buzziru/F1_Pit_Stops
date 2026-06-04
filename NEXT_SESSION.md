@@ -24,7 +24,6 @@ _최종 갱신: 2026-06-04 (#9 cross-row 필드 피처 exp_017 기각 — ADR #0
 1. **(M4 Ensemble) 모델 다양성** — XGBoost / CatBoost (증강 포함) → exp_016 과 OOF 상관 점검 → 블렌딩/스태킹. 대형이면 Kaggle GPU 이관(.py→.ipynb). [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10)
 2. **(M5 Tuning) Optuna sweeper 튜닝** — 🚫 **연기**(앙상블 확정 후). `hydra-optuna-sweeper`, 앙상블 구성요소/스택 기준. [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11)
 3. (옵션) #8 후속 — weight>1.0 스윙, 원본을 feature(예측값)로 쓰는 변형 등. 현재 weight=1.0 고정.
-4. (backlog) `FE_IDEA` 후보3 — Driver×Race 희소 TE, 단발 ablation 1회로 채택/기각 (기대값 낮음, ADR #009 경계).
 
 ## ✅ 완료
 - exp_001 베이스라인(#2) / W&B(#4) / EDA #1+eda_02 / Hydra 분리(#007) + Python 3.11 pin(#008)
@@ -34,6 +33,7 @@ _최종 갱신: 2026-06-04 (#9 cross-row 필드 피처 exp_017 기각 — ADR #0
 - **LapTime_Delta/Cumulative_Degradation 리서치** — 원본 공식 후보(직전랩/스틴트첫랩 delta), S6E5 합성본은 재현 안 됨. `docs/data_dictionary.md`
 - **🏆 외부 원본 증강 (exp_012~016, #8) → 채택·제출·신기록** — Phase1 plain +0.00174, Phase2 driver_te exp_016 Public 0.95065/Private 0.95139. ADR #011, 설계 `external_data_augmentation.md`, #8 close
 - **cross-row 필드 피처 (exp_017, #9) → 기각·revert** — `field_pit_rate`(동일 race-lap LOO 피트율). corr 0.282(최고)였으나 OOF Δ−0.00027(5/5 fold 음수). #010 통과≠충분조건. ADR #012, #9 close
+- **Kaggle FE 2차 탐색 (ADR #014) → 채택 0건** — 경쟁자/위치조건 피트(`ahead_pit_rate` 잔차corr 0.073) 사전 기각, **Driver×Race 합성키 TE(exp_018) OOF Δ−0.00044 기각**. LGBM FE 공간 소진 판단 → M4 앙상블로. LB상 상위권 우위는 앙상블 다양성(8위 0.95462).
 
 ## 🛠️ 설정 관리 (Hydra) + 환경
 - 튜닝/실험 노브 → `conf/`(Hydra), 구조적 상수 → `src/config.py`
