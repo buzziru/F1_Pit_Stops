@@ -1,0 +1,7 @@
+# driver_te + Year·Stint 를 추가 native categorical (XGB enable_categorical). exp_028.
+# ⚠️ 트리는 ordinal numeric 도 split 으로 처리 → 정확도 이득 중립 예상(ADR #010).
+# 목적: 다양성(다른 split 메커니즘) 측정 + XGB GPU(Lightning) 경로 검증. Stint 버킷 없음(트리는 rare cat OK).
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint]

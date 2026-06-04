@@ -1,0 +1,6 @@
+# base(native) + Year·Stint 를 추가 native categorical. CatBoost ordered-TS. exp_029.
+# year+stint-cat 대칭성 완성(LGBM튜닝·XGB exp_028·CatBoost). 트리는 rare cat OK → Stint 버킷 없음.
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint]
