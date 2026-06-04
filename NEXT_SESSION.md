@@ -2,87 +2,64 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-04 (RealMLP **exp_023 Kaggle P100 실행 중**(3/5 fold 완료, fold AUC 0.948/0.945/0.942). 코드리뷰 후속 **Tier-1·2·3 리팩토링 완료**(#12). **다음 세션: exp_023 산출물 회수 + 블렌드 판단**)_
+_최종 갱신: 2026-06-04 (M4 앙상블 심화: **스태킹 착수 + Year-cat + LGBM 튜닝 선행 + Lightning Jobs 검증**. 진행 중 2건(exp_027 로컬·combined RealMLP Kaggle), Optuna 재개 대기.)_
 
-## 🟡 진행 중 — exp_023 RealMLP (Kaggle P100, 다음 세션 회수)
-- **상태**: Kaggle GPU 커널 실행 중. 로그(`.exp_log`) 기준 **3/5 fold 완료** — fold0 **0.948021** / fold1 **0.945496** / fold2 **0.942450** (3-fold 평균 ≈0.9453, LGBM OOF 0.9439 대비 우위). fold당 ~44분, 완주 ETA 갱신시점 기준 ~1.5h.
-- **설정**: baseline(구 dataset) — `features=driver_te`(TE=Driver만, FE 미적용), `device=cuda`, n_cv=1, n_epochs=256, augment weight=1.0. RealMLP는 early-stopping 없이 고정 256ep(best_iter cap 점검 비대상).
-- ⚠️ **이 커널은 Tier-1(#1 LOG_DIR) 수정 前 dataset** → 완주 직후 JSON 로그 쓰기 크래시 가능. 단 OOF·submission CSV는 로그보다 **먼저** 저장되므로 안전 → `kaggle kernels output`으로 회수 가능.
-- **다음 세션 첫 작업** 은 아래 "🔜 다음 할 일" 1번 참조.
+## 🟡 진행 중 (다음 세션 회수/이어가기)
+1. **exp_027 — LGBM tuned recap** (로컬 CPU, 실행 중). exp_026(OOF 0.951732)이 **fold3 best_iter=5000 cap 미수렴** → `num_boost_round=8000`로 재학습(best_iter 원칙). 완료 시 **수렴 확인(fold 전부 <8000)** → stack LGBM 멤버를 exp_026→exp_027로 교체.
+2. **combined RealMLP — exp_024_rmlp_fe_yc** (Kaggle P100, ~3.5h). `features=realmlp_fe_yearcat`(상호작용5+cross2 TE + Year-cat), 256ep 5-fold. 회수:
+   ```
+   set -a; . ./.env; set +a
+   uv run kaggle kernels output buzziru/realmlp-exp024-combined-fe-year-cat-256ep-5fold -p experiments/_kaggle_out/exp024/
+   ```
+   baseline exp_023 OOF 0.944154 대비 + year-cat fold0 +0.00084 / FE 효과 측정.
+3. **Optuna LGBM 재개** (사용자 순서: exp_027(b) → 그 다음 재개(a)). 스터디 SQLite resumable(10 trial 완료, best 0.951732). 재개: `uv run python -m src.tune_lgbm --trials N`. ⚠️ exp_027 recap 이득 크면 **tune cap도 5000→8000 상향** 후 재개 판단(현 study는 cap5000 제약).
 
 ## 🟢 현재 상태
-- 프로젝트 골격 완성: `src/`(config·data·features·cv·train·predict·utils·encoders·eda_utils), `docs/`, `experiments/`, `pyproject.toml`, `.gitignore`
-- **코드리뷰 후속 리팩토링 완료 (#12, ADR/계획 `docs/wiki/realmlp_refactor_plan.md`)**:
-  - Tier-1: `log_experiment` LOG_DIR 동결 버그 수정(호출시점 해석), cyclical `rp_sin/rp_cos` 제거, RealMLP `aug_weight≠1.0` hard error, 중복 `.copy()` 제거
-  - Tier-2: RealMLP 전용 FE를 `conf/features/realmlp_fe.yaml` 그룹으로(`feature_builder`+`target_encode_cols:[Driver,Race_Compound,Race_Year]`). 루트 `realmlp_fe` 플래그·`REALMLP_CROSS_COLS` 제거
-  - Tier-3: `src/train_common.py`의 `run_oof_cv(prepare, fit_predict)` 공유 골격으로 xgb/catboost/realmlp 통합(각 ~80줄). **LGBM `train.py` 미변경**(ADR). 게이트 `scripts/check_fold_inputs.py`로 6케이스×5fold 입력 바이트 동일 검증 ✅
-  - backlog: #7 `device:cuda` 로컬 폴백(LOW)
-- 데이터: 대회 train 439,140×16 / test 188,165×15 + **외부 원본** `data/f1_strategy_source/f1_strategy_dataset_v4.csv`(101,371행, 증강용, git 제외)
-- 확정 설계: StratifiedKFold 5-fold(seed=42 고정·검증됨), LightGBM CPU, `is_unbalance=False`
-- **누수 방지 OOF 타깃 인코딩** — `features=driver_te`. conf 그룹: `base / driver_te`(채택) + `driver_race_te / driver_compound_te / all_te`(기각, 보존)
-- **외부 증강** — `augment.enabled/weight`(Hydra), `data.load_source_augmentation()`. fold train 에만 원본 추가·검증=대회 only (ADR #011, 채택)
-- **모델 학습 경로 2종**: `src/train.py`(LGBM) / `src/train_xgb.py`(XGB, exp_016 미러). conf `model: lgbm / xgb`. `gpu` extra(xgboost·catboost) 설치됨(`uv sync --extra gpu`). 현재 **CPU 실행**(GPU 전환 미결정).
-- 커스텀 서브에이전트 3종: `eda-explorer`, `feature-smith`, `kaggle-researcher`
-- 결정 기록: `docs/wiki/decisions.md` (#001~#014), 실험 회고: `docs/wiki/experiments/` + 설계 `docs/wiki/external_data_augmentation.md`
-- **아이디어 문서**: `docs/idea/`(예: `FE_IDEA.md`) — **사용자 전용**, 읽기만 (편집 금지)
+- 골격 + 이번 세션 신규: **`max_folds`**(스크리닝 노브) · **`extra_categorical_cols`**(모델별 추가 범주형) · **`kill_criterion`**(스파이크 사전 중단조건, 과몰입 가드) · `conf/features/{base_yearcat,realmlp_fe_yearcat}.yaml` · **`src/tune_lgbm.py`**(Optuna) · **`src/stack.py`**(메타러너).
+- **Lightning Jobs 검증 완료**(`docs/wiki/lightning_jobs.md`) — GPU offload 대안(노트북 변환 불필요). teamspace `ml`·user **`paraise`**·studio `predicting-f1-pit-stops`. CLI `--user paraise`, wandb는 `-e WANDB_API_KEY`. artifact=`/teamspace/jobs/<name>/artifacts/`.
+- **Year-cat 인사이트 검증**: 이산 시즌 범주형화 → CatBoost(exp_025) +0.00023, RealMLP fold0 +0.00084. `extra_categorical_cols` 노브로 분기. Stint→cat은 백로그(#12), Position→연속 유지.
+- 데이터·CV·증강·TE: 변동 없음(StratifiedKFold seed=42, 외부증강 w1.0, driver_te).
 
 ## 📈 현재 최고
-- **🏆 LB 최고(제출됨)**: **3-way 균등1/3 블렌드**(exp_016+exp_019+exp_022) — **OOF 0.951642 / Public 0.95084 / Private 0.95165**. 제출파일 `experiments/submissions/blend_3way_eq.csv`. vs exp_016 단독 Public +0.00019/Private +0.00026. OOF≈Private 갭 +0.00001(Public 갭 +0.0008, 서브셋 노이즈, ADR #006).
-- **CatBoost 최종 = exp_022**(native, iter15000): 단독 OOF 0.949811(exp_021 0.949373 대비 +0.000439, cap 미발화·수렴). exp_021은 대조군. ADR #017.
-  - 단독: XGB exp_019 0.951090 > LGBM exp_016 0.950959 > CatBoost exp_022 0.949811. CatBoost는 단독 약하나 상관 낮아(LGBM 0.9854/XGB 0.9858 < LGBM-XGB 0.9944) 블렌드 견인.
-  - OOF 파일: `exp_016/019/020/021/022.csv`. 최적가중(w_cat≈0.28) OOF 0.951655이나 균등 권장(과적합·Public 갭).
-- 비교 기준: 단독은 exp_016, 앙상블은 3-way 균등 0.951507.
+- **🏆 제출 LB 최고**: 3-way 균등(exp_016+019+022) **Public 0.95084 / Private 0.95165** (`blend_3way_eq.csv`). OOF 0.951642.
+- **🥇 미제출 최고 OOF**: **스택 4-way logistic 0.952043** (exp_026 tuned + exp_019 + exp_025 + exp_023). vs 제출 3-way **+0.0004**. 파일 `stack_4way_tuned_logistic.csv`. (exp_027 교체·combined RealMLP 반영 후 재산출 예정 → 제출 판단.)
+- 개별 OOF: XGB exp_019 0.951090 · **LGBM-tuned exp_026 0.951732**(>exp_016 0.950959, +0.00077) · CatBoost+Year-cat exp_025 0.950043 · RealMLP exp_023 0.944154.
+- ⚠️ **RealMLP 스택 가중 ~0**(nnls 0/logistic 0.068) — combined RealMLP(exp_024)가 이 게이트를 바꿀지가 관건.
 
 ## 🔜 다음 할 일 (우선순위)
-> ⚠️ **개별 모델 튜닝은 모델 다양성·앙상블 이후로 미룸** (ADR #013). 마일스톤 M4 Ensemble → M5 Tuning 순.
+1. **exp_027 회수·수렴 확인 → stack 재실행**(exp_027/019/025/023). `uv run python -m src.stack --members exp_027_lgbm_tuned,exp_019,exp_025_cat_yearcat,exp_023 --tag stack_v2`
+2. **(a) Optuna 재개** (exp_027 후, CPU 단독). best 갱신 시 그 OOF로 stack 멤버 교체.
+3. **combined RealMLP(exp_024) 회수 → 스택 게이트**: RealMLP가 가중 받으면 → **RealMLP v2 = Year+Stint(5+버킷) categorical** + (선택) Race_Year embedding ablation. 가중 ~0이면 RealMLP 추가투자 보류.
+4. **최종 스택 → 제출 판단** (제출 3-way 0.951642 대비, OOF≈Private 신뢰·Public 무시 #006). 마일스톤이면 제출 + ADR.
+5. 백로그: Stint→cat(#12) · cross embedding ablation · seed averaging(#016) · ADR #013 정식 종결.
 
-1. **🟡 exp_023 산출물 회수 + 블렌드 판단 (이번 세션 첫 작업)**
-   - 회수: `set -a; . ./.env; set +a; uv run kaggle kernels output buzziru/<kernel-slug> -p experiments/` → `oof/exp_023.csv`·`submissions/exp_023.csv` 배치. (slug은 `kaggle/kernel-metadata.json` 참조)
-   - 검증: OOF AUC 재계산(로그상 5-fold 평균 기대 ≈0.945). JSON 로그는 LOG_DIR 버그로 유실됐을 수 있음 → 필요시 회고 문서에 수기 기록.
-   - **블렌드 판단**: 기존 3-way(exp_016+019+022, OOF 0.951642)에 exp_023(RealMLP) 추가 시 OOF 변화 측정. RealMLP는 GBDT와 상관 낮을 것으로 기대 → 4-way 또는 가중 블렌드. 개선 시 제출(마일스톤).
-   - 회고: `docs/wiki/experiments/exp_023_realmlp.md` 신규 (fold AUC·wall-clock·블렌드 결과). [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10)
-2. **exp_024 — RealMLP + FE 라운드** (exp_023 baseline 대비 FE 효과 측정)
-   - ⚠️ **선결**: Tier-1·2로 `features.py`·`utils.py`·`train_realmlp.py`·`conf/` 변경됨 → Kaggle src Dataset **재push** (`bash kaggle/push_src_dataset.sh <version>`) 후에야 반영.
-   - exp_024 노트북: cfg `features` 를 `OmegaConf.load('.../conf/features/realmlp_fe.yaml')`로(기존 driver_te 대체) → `add_realmlp_features`(상호작용5+cross2) + TE[Driver,Race_Compound,Race_Year] 적용.
-   - exp_023(baseline) vs exp_024(FE) OOF·블렌드 기여 비교 → 채택/기각 ADR.
-3. **GPU 전환 결정(일부 해소)** — CatBoost GPU ~18–30분 확인. XGB CPU **31.5분**/run → `device=cuda`(XGB) 검토 잔존. M5 튜닝 부담 시 재검토.
-4. **(M5 Tuning) Optuna 튜닝** — 🚫 연기(앙상블 확정 후). [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11)
-5. (옵션) #8 후속 — weight>1.0 스윙 등. 현재 weight=1.0 고정.
-
-## ✅ 완료
-- exp_001 베이스라인(#2) / W&B(#4) / EDA #1+eda_02 / Hydra 분리(#007) + Python 3.11 pin(#008)
-- **is_stable_delta (exp_002/003) → 기각** / **Driver OOF TE (exp_004, #3) → 채택**
-- **Race/Compound OOF TE (exp_005~007, #6) → 전부 기각** — ADR #009, #6 close
-- **1번 그룹 파생피처 (exp_008~011, #7) → 전부 기각·revert** — ADR #010, 회고 `exp_008_011_group1_fe.md`
-- **LapTime_Delta/Cumulative_Degradation 리서치** — 원본 공식 후보(직전랩/스틴트첫랩 delta), S6E5 합성본은 재현 안 됨. `docs/data_dictionary.md`
-- **🏆 외부 원본 증강 (exp_012~016, #8) → 채택·제출·신기록** — Phase1 plain +0.00174, Phase2 driver_te exp_016 Public 0.95065/Private 0.95139. ADR #011, 설계 `external_data_augmentation.md`, #8 close
-- **cross-row 필드 피처 (exp_017, #9) → 기각·revert** — `field_pit_rate`(동일 race-lap LOO 피트율). corr 0.282(최고)였으나 OOF Δ−0.00027(5/5 fold 음수). #010 통과≠충분조건. ADR #012, #9 close
-- **Kaggle FE 2차 탐색 (ADR #014) → 채택 0건** — 경쟁자/위치조건 피트(`ahead_pit_rate` 잔차corr 0.073) 사전 기각, **Driver×Race 합성키 TE(exp_018) OOF Δ−0.00044 기각**. LGBM FE 공간 소진 판단 → M4 앙상블로. LB상 상위권 우위는 앙상블 다양성(8위 0.95462).
-- **(M4) XGBoost (exp_019) → 채택** — `src/train_xgb.py`. 단독 OOF 0.951090(>LGBM), **LGBM+XGB 블렌드 0.951402 신기록(미제출)**. corr 0.9944. CPU 31.5분. #10 진행중.
-- **(M4) CatBoost (exp_020 TE 기각 / exp_021 native / exp_022 최종) → ADR #017** — `src/train_catboost.py`(GPU T4). native ordered TS가 OOF TE보다 우월. exp_021 cap 미발화 발견 → **exp_022(iter15000) 수렴·채택**(단독 0.949811). best_iter 로깅 원칙 신설(CLAUDE.md + `utils.log_experiment` + 3 train.py).
-- **🏆 (M4) 3-way 블렌드 제출(마일스톤) → 신기록** — 균등1/3(exp_016+exp_019+exp_022), `blend_3way_eq.csv`. **Public 0.95084 / Private 0.95165**(vs exp_016 +0.00019/+0.00026). OOF≈Private(갭 +0.00001). ADR #017/#006.
+## ⚠️ 운영 원칙 (이번 세션 학습, 메모리화)
+- **CPU-heavy 작업 중첩 시 사용자 확인** (임의 종료·병행 금지). Kaggle GPU는 로컬 CPU와 무관.
+- **중간과정(미확정) 문서화 전 확인** — 결정·결과·회고는 자유.
+- **Kaggle/L4 GPU 실험 wandb on** (`-e WANDB_API_KEY`, Kaggle은 Secrets 선결).
+- **스파이크 전 kill_criterion 선언** (과몰입=재발 약점). ⚠️ Hydra CLI 값에 `<`·공백 금지(파싱 깨짐) → `"kill_criterion='안전 ASCII'"`.
 
 ## 🛠️ 설정 관리 (Hydra) + 환경
-- 튜닝/실험 노브 → `conf/`(Hydra), 구조적 상수 → `src/config.py`
-- 실행(LGBM): `uv run python -m src.train exp_id=... [features=driver_te] [augment.enabled=true augment.weight=1.0] [use_wandb=false]`
-- 실행(XGB): `uv run python -m src.train_xgb exp_id=... model=xgb features=driver_te augment.enabled=true augment.weight=1.0 [use_wandb=false]`
-- ablation: `conf/features` 의 `drop_cols` 노브
-- 제출: `set -a; . ./.env; set +a; uv run kaggle competitions submit -c playground-series-s6e5 -f experiments/submissions/<exp>.csv -m "..."`
-- **Python 3.11 pin** 완료. Jupyter: `uv run jupyter lab --port 8888 --IdentityProvider.token BLOCK --ip 0.0.0.0 --no-browser`
-- ⚠️ 긴 학습은 백그라운드 시작·정상동작만 확인하고 턴 종료(블로킹 금지). 메모리 `experiment-async-workflow`.
+- 실행(LGBM): `uv run python -m src.train exp_id=... [features=driver_te] [augment.enabled=true] [model.num_boost_round=N] [model.params.*=...]`
+- 실행(XGB/CatBoost/RealMLP): `src.train_xgb / train_catboost / train_realmlp`, `features=base|driver_te|base_yearcat|realmlp_fe|realmlp_fe_yearcat`, `max_folds=N`(스크리닝)
+- 스태킹: `uv run python -m src.stack --members a,b,c --tag NAME` (메타 4종+corr, 동일 fold CV)
+- 튜닝: `uv run python -m src.tune_lgbm --trials N [--timeout S]` (SQLite resume)
+- 제출: `set -a; . ./.env; set +a; uv run kaggle competitions submit -c playground-series-s6e5 -f experiments/submissions/<f>.csv -m "..."`
+- ⚠️ 긴 학습은 백그라운드, **CPU 경합 시 확인**. `experiments/{oof,submissions,logs,tuning,_kaggle_out,outputs}` git 제외.
 
-## ⏳ 대기/보류
-- **GPU 전환 결정** — XGB CPU 31.5분/run 기준, CatBoost·M5 튜닝 전에 사용자 결정 대기.
-- **블렌드 제출** — LGBM+XGB 0.951402 미제출.
-- M5 튜닝(앙상블 후) 시 Optuna sweeper / Kaggle GPU 이관 시 `.py → .ipynb`
-- #7 핸드크래프트 파생 (ADR #010 보류, 이슈 오픈 유지)
-- 외부데이터 사용 — 대회 규정 허용 범위 확인 권장(Playground 통상 허용)
+## ✅ 완료 (이번 세션 추가분)
+- **(M4) RealMLP exp_023**(baseline, OOF 0.944154) — Kaggle P100, JSON 사후 재구성. 회고 미작성(결론 후 작성 예정).
+- **(M4) CatBoost+Year-cat exp_025**(Lightning L4, 첫 Job 검증) OOF 0.950043(+0.00023 vs exp_022).
+- **(M5선행) LGBM Optuna** — best OOF 0.951732(+0.00077). exp_026 OOF(fold3 cap) → exp_027 recap 중.
+- **스태킹 착수**(`src/stack.py`) — 4-way logistic 0.952043(미제출).
+- **워크플로 회고**(`workflow_retrospective.md`) + 재활용성 스코어카드 + kill_criterion 가드.
+- ADR #013 개정(튜닝 선행=GPU 점유 중 CPU 활용). 커밋 6건.
+- 기존 완료: exp_001~022(베이스라인·driver_te·외부증강·XGB·CatBoost·3-way 블렌드 제출 신기록) — 변동 없음.
 
 ## 🔗 열린 이슈
-- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — **진행중**(XGB✅ CatBoost✅ 3-way블렌드✅, **RealMLP exp_023 회수·블렌드 남음**)
-- [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) [refactor] 코드리뷰 후속 — Tier-1·2·3 **완료**, #7 device 폴백만 backlog
-- [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11) [tuning] M5 Optuna — 🚫 연기(앙상블 후)
-- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) [feature] 파생 피처 — **보류(parked)**, 닫지 않음. ADR #010
-- ~~#1~~✅ / ~~#2~~✅ / ~~#3~~✅ / ~~#4~~✅ / ~~#5~~✅기각 / ~~#6~~✅기각 / ~~#8 외부 증강~~✅채택 / ~~#9 cross-row FE~~✅기각
+- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — **진행**(스태킹·Year-cat·tuned LGBM)
+- [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11) [tuning] Optuna — **선행 진행중**(best 0.951732, 재개 대기)
+- [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) [feature] RealMLP FE(exp_024) — combined 실행중 + **Stint-cat 백로그**
+- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생 피처 — parked(ADR #010)
 
 repo: https://github.com/buzziru/F1_Pit_Stops
