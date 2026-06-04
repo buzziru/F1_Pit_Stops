@@ -17,11 +17,11 @@
 ## Jobs 핵심 동작
 - **환경 스냅샷**(`--studio` 모드): 현재 스튜디오의 **설치 패키지 + 파일(.venv·src·conf·data 포함)을 스냅샷**해 GPU 머신에서 실행 → `.venv/bin/python -m src....` **그대로 동작**(Kaggle 처럼 `.ipynb` 변환/Dataset push 불필요). 작업 디렉터리 = 스튜디오 루트.
 - **비동기·분리**: 제출 후 스튜디오를 꺼도 Job 은 계속 실행.
-- **산출물 회수**(실측 정정): Job 은 **스냅샷 별도 머신**에서 돌아 출력이 라이브 스튜디오 FS 에 자동 병합되지 **않는다**. 대신 Job 작업디렉터리를 미러한 **artifact 경로**에 남고 스튜디오에서 접근 가능:
+- **산출물 회수**: Job 은 별도 머신에서 돌아 출력이 라이브 스튜디오 FS 에 자동 병합되지 **않는다**(실측). 대신 Job 작업디렉터리를 미러한 **artifact 경로**에 남고 스튜디오에서 접근 가능:
   - 경로 = **`/teamspace/jobs/<job-name>/artifacts/`** (SDK `job.artifact_path`). Job 이 `experiments/oof/x.csv` 에 쓰면 → `/teamspace/jobs/<job-name>/artifacts/experiments/oof/x.csv`.
   - 회수: 필요한 파일을 로컬 `experiments/...` 로 `cp`. (`artifacts_remote`/`path_mappings` 로 명시 매핑도 가능.)
   - 로그: `job.logs` (SDK). W&B 는 `-e WANDB_API_KEY` 면 Job 안에서 정상 동기화(실측 ✓).
-- **시크릿/환경변수**: `-e KEY=VALUE`. → **wandb 키를 `-e WANDB_API_KEY=...` 로 주입**하면 GPU 실험 wandb-on 규칙([[../../.claude/.../memory/kaggle-gpu-wandb-on]] 정신)을 Kaggle Secrets 없이 해결.
+- **시크릿/환경변수**: `-e KEY=VALUE`. **wandb 키를 `-e WANDB_API_KEY=...` 로 주입**하면 GPU 실험 wandb-on 규칙을 Kaggle Secrets 없이 해결.
 - **머신 타입**(GPU): `T4`, `T4_X_2/4/8`, `L4`, `L4_X_2/4/8`, `L40S(_X_2/4/8)`, `A100`, `A100_80GB`(`_X_2/4/8`), `H100(_X_2/4/8)`, `H200`, `B200_X_8`. CPU: `CPU_SMALL`~`CPU_X_16`.
 - **과금**: Job 실행 시간만 과금, 종료 시 머신 회수(상시 스튜디오의 idle 비용 없음). `--interruptible` = 스팟(저렴, 선점 가능 → 체크포인트 권장). `--max_runtime <초>` 상한.
 
@@ -79,7 +79,7 @@ lightning run job --name cat-yearcat-l4-test --machine L4 \
 | 코드 | `.ipynb` 변환 + src Dataset push | `.venv/bin/python -m src...` 그대로 |
 | GPU | P100(무료 쿼터 주30h) | T4/L4/A100… (크레딧 과금) |
 | wandb | Kaggle Secrets wiring | `-e WANDB_API_KEY` 한 줄 |
-| 회수 | `kernels output` | 통합 FS/artifacts |
+| 회수 | `kernels output` | artifact 경로에서 `cp` |
 → 무료 쿼터로 충분한 단발은 Kaggle, 반복·통합 중요 라운드는 Lightning Job.
 
 ## 트러블슈팅 — teamspace owner 해석 (해결됨, 2026-06-04)
