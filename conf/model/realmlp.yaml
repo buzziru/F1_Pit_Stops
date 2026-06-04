@@ -1,0 +1,12 @@
+# RealMLP (pytabkit) 하이퍼파라미터 — M4 non-GBDT 다양성 (exp_023, ADR #018).
+# GBDT(LGBM/XGB/CatBoost)와 메커니즘이 달라 decorrelation 기대. Kaggle GPU(device=cuda) 실행.
+# RealMLP_TD = 메타튜닝 default → 무튜닝 사용(#018). random_state 는 train_realmlp.py 가 주입.
+# ⚠️ n_epochs 는 메타튜닝 default(256) — 함부로 변경 금지. 로컬 스모크만
+#    `model.params.device=cpu model.params.n_epochs=2` 로 override.
+name: realmlp
+params:
+  device: cuda       # Kaggle T4. 로컬 CPU 스모크는 cpu 로 override
+  n_cv: 1            # 내부 CV 미사용 → exp_016~022 와 동일 fold 비교
+  n_refit: 0
+  n_epochs: 256      # 메타튜닝 default 유지
+  verbosity: 1

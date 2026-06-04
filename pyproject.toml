@@ -24,6 +24,7 @@ eda = [
 gpu = [
     "xgboost>=2.0",
     "catboost>=1.2",
+    "pytabkit>=1.2",
 ]
 
 [tool.uv]
