@@ -16,7 +16,7 @@
 ## A. 기각 실험 → RealMLP 적용성
 | 기각 실험(ADR) | GBDT 기각 사유 | RealMLP 적용성 |
 |---|---|---|
-| **field_pit_rate**(exp_017,#012) | Race·LapNumber·PitStop이 트리서 span(R²0.744) | ✅✅ MLP는 cross-row 집계 불가 → 새 정보. corr 0.282(최고)·**이미 구현·누수검증**(레버4) |
+| **field_pit_rate**(exp_017,#012) | Race·LapNumber·PitStop이 트리서 이미 포착(R²0.744) | ✅✅ MLP는 cross-row 집계 불가 → 새 정보. corr 0.282(최고)·**이미 구현·누수검증**(레버4) |
 | **is_stable_delta** 구간화(exp_002/3,#010) | 트리 단조변환 불변 | ✅ MLP는 구간/임계가 새 표현. 이미 구현 |
 | **group1 상호작용**(exp_008-11,#010) | 단조스케일/트리 추출가능 | ⚠️ 명시적 상호작용은 유익하나 단조스케일은 **내장 robust scaling 중복** |
 | **Race/Compound TE**(exp_005-7,#009) | 저카디 native가 처리 | ⚠️ 한계적 — RealMLP가 이미 embedding |
@@ -51,7 +51,7 @@
 ## E. 추가 조사 (선행 가치)
 1. ~~8위 yekenot 노트북 확보~~ ✅ 완료(아래 섹션).
 2. ~~digit features~~ → 후보에서 제외(yekenot 미사용).
-3. **(선택) Driver embedding vs driver_te 1-fold 벤치** — 우리는 **TE 채택 확정**(고카디 embedding 논문 검증 약함). 호기심성 비교만, 우선순위 낮음.
+3. **(선택) Driver embedding vs driver_te 1-fold 벤치** — 우리는 **TE 채택 확정**(고카디 embedding 논문 검증 약함). 참고용 비교만, 우선순위 낮음.
 4. **(선행) exp_023 baseline 완료** — 공유피처 RealMLP OOF·corr 확보 후 위 FE 증분 측정.
 
 ## yekenot 8위 RealMLP 레퍼런스 (실코드 분석, 2026-06-04)

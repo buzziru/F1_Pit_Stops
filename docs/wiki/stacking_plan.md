@@ -60,7 +60,7 @@ save: experiments/oof/stack_*.csv, submissions/stack_*.csv; report weights + AUC
 2. base 풀 확정(corr 0.99↑ 중복 제거, RealMLP 포함).
 3. `src/stack.py` 구현 + 3 메타러너 + 균등/rank-mean 대조.
 4. §6로 판정 → 채택 시 제출(마일스톤) + ADR.
-5. (이후 엔드게임) 스택이 더 못 오르면 **새 모델군**(TabM 등) 1개 추가 후 재스택, 아니면 마감.
+5. (이후 마무리 단계) 스택이 더 못 오르면 **새 모델군**(TabM 등) 1개 추가 후 재스택, 아니면 마감.
 
 ## 리스크
 - 메타 가중의 OOF 과적합: 439k행·소수 피처·정규화/비음수 제약 → 위험 낮음(가중블렌드보다 안전). 그래도 §6 균등 대조 필수.
