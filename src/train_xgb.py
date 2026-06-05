@@ -59,7 +59,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
             early_stopping_rounds=early_stopping,
             enable_categorical=True,
             n_jobs=-1,
-            random_state=config.SEED,
+            random_state=cfg.get("seed", config.SEED),
             **xgb_params,
         )
         model.fit(x_tr, y_tr, sample_weight=w_tr, eval_set=[(x_va, y_va)], verbose=False)

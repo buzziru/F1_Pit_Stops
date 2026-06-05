@@ -47,7 +47,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
             iterations=iterations,
             early_stopping_rounds=early_stopping,
             cat_features=cat_cols,
-            random_seed=config.SEED,
+            random_seed=cfg.get("seed", config.SEED),
             **cat_params,
         )
         model.fit(x_tr, y_tr, sample_weight=w_tr, eval_set=(x_va, y_va), verbose=False)

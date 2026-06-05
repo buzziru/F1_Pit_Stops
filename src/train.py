@@ -33,7 +33,8 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     Returns:
         cv_mean, cv_std, fold_scores, log_path 를 담은 dict.
     """
-    utils.seed_everything(config.SEED)
+    seed: int = cfg.get("seed", config.SEED)  # 모델 seed (seed averaging 노브, ADR #016). fold 분할은 config.SEED 고정.
+    utils.seed_everything(seed)
     utils.load_env()
 
     exp_id: str = cfg.exp_id
@@ -43,7 +44,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     # 튜닝 노브(Hydra) + 인프라 값(구조적, src.config) 주입
     lgb_params: dict[str, Any] = {
         **OmegaConf.to_container(cfg.model.params, resolve=True),
-        "seed": config.SEED,
+        "seed": seed,
         "n_jobs": -1,
         "verbose": -1,
     }

@@ -45,7 +45,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         return x, x_test, x_src, None
 
     def fit_predict(x_tr, y_tr, x_va, y_va, x_te, w_tr, cat_cols, state):
-        model = RealMLP_TD_Classifier(random_state=config.SEED, **params)
+        model = RealMLP_TD_Classifier(random_state=cfg.get("seed", config.SEED), **params)
         model.fit(x_tr, y_tr, cat_col_names=cat_cols)
         return model.predict_proba(x_va)[:, 1], model.predict_proba(x_te)[:, 1], None
 

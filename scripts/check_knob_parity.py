@@ -32,7 +32,7 @@ EXEMPT: dict[str, str] = {
 
 # top-level cfg 노브 중 divergence 위험이 있어 패리티를 강제할 대상.
 # (exp_id/notes/use_wandb 는 양쪽 자명히 읽음, cfg.model 은 모델별이라 제외.)
-TOP_LEVEL_GUARDED = {"max_folds", "kill_criterion"}
+TOP_LEVEL_GUARDED = {"max_folds", "kill_criterion", "seed"}
 
 
 def _knobs(src: str) -> dict[str, set[str]]:

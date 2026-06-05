@@ -46,7 +46,8 @@ def run_oof_cv(
     Returns:
         cv_mean, cv_std, fold_scores, log_path.
     """
-    utils.seed_everything(config.SEED)
+    seed = cfg.get("seed", config.SEED)  # 모델 seed (seed averaging 노브, ADR #016). fold 분할은 config.SEED 고정.
+    utils.seed_everything(seed)
     utils.load_env()
 
     exp_id, notes, use_wandb = cfg.exp_id, cfg.notes, cfg.use_wandb

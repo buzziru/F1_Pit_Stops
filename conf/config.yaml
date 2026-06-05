@@ -10,6 +10,7 @@ notes: ""
 use_wandb: true
 max_folds: null    # null=전체 5-fold. N(>=1) 이면 동일 분할(seed/n_folds 불변)의 앞 N fold 만 실행(스크리닝용)
 kill_criterion: "" # 스파이크 전 중단조건 선언(과몰입 구조적 가드, ADR #013). 예: "블렌드 기여<0.0005면 park". JSON 로그에 기록
+seed: 42           # 모델/run seed (seed averaging 노브, ADR #016). ⚠️ fold 분할 seed 는 src.config.SEED(=42) 영구 고정 — 이 노브는 모델 random_state·seed_everything 만. 바꿔도 fold 불변.
 
 # 외부 원본 데이터 train 증강 (검증/test 미포함). #8 참조.
 augment:
