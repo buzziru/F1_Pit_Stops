@@ -1,9 +1,26 @@
-# 계획 — TabM 성능 개선 (5번째 멤버 추가)
+# TabM — 모델별 SSOT (피처 전략 · 성능 개선 5번째 멤버 추가)
 
 > 2026-06-05 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **계획(보류 — cat-tune·ep/lr 후 착수)** · 관련 [[decisions]] #029(TabM park·원인)·#021(RealMLP v2)·#025(동화)·#017(인코딩 분기) · 실행 [[kaggle_jobs]]/[[lightning_jobs]]
 
+## 피처 전략
+
+현 적용(exp_064, `tabm_fe_driverhash`): Driver = **hash64(native)**, cross native, +i_*, Stint_cat native, `num_emb_type=pwl`(이 버전 TabM은 pwl만 지원).
+
+| 현 적용 인코딩 | 분기 근거 | 후보/백로그 | 게이트 |
+|---|---|---|---|
+| Driver = **hash64(native)** | high-card를 robust 버킷으로(rare driver 의존↓), 타깃 비의존이라 TE/ctr 멤버와 분기 유지(corr↓). exp_055 full-native corr 0.9407 | Driver native(full) vs Driver TE+cross-native(exp_045형) 재비교 | corr↓RealMLP(<0.97) |
+| cross(Race_Compound·Race_Year) = **native 임베딩** | TabM 자기 임베딩 학습 → RealMLP(cross-TE)와 분기 | — | corr |
+| **i_*(상호작용 5종)** | MLP 저층 직접활용(realmlp_fe와 공유) | — | — |
+| Stint_cat = **native 범주** | 저카디 native | **Stint 수치형 입력 A/B** (아래 참조) | 개별↑·corr↓ |
+| num_emb_type = **pwl** | 이 버전 TabM은 pwl만 지원(periodic/PLE는 rtdl_num_embeddings) | PLE/periodic 수치임베딩(2위 레버) vs default 비교 | 개별 |
+| (제외) floor/quantile 비닝 | exp_037 −0.00114 유해 확정, PLR 수치임베딩과 중복·손실 | — | 기각(실측) |
+
+**후보/백로그 — Stint 수치형 입력 A/B**: 현재 Stint_cat(min(Stint,5)) 범주형으로 입력하나, Stint는 ordinal(순서형)이고 NN num_emb(RealMLP=pbld, TabM=pwl)이 수치형을 분위수 구간 임베딩으로 처리하므로 순서 보존+비선형 표현 가능. extra_categorical_cols에서 Stint_cat 제거→Stint(raw) 수치형 유지. 개별↑·미세 corr↓ 기대(마진 레버). RealMLP/TabM 공통 후보.
+
+- corr 참고(stack_v8): CatBoost↔RealMLP 0.969(최저=다양성 앵커), GBDT끼리 0.98+(포화). TabM hash64 corr 0.965(CatBoost와 동류 분기).
+
 ## 목표
-TabM을 **RealMLP와 분기된(corr↓) + 충분히 강한 NN 축**으로 만들어 **stack_v8(4-member, logistic 0.954338)에 5번째 멤버로 추가**(스택 Δ≥+0.0001). **RealMLP 교체 아님 — 추가**(사용자 확정 2026-06-05). 대회 증거: **2위 솔루션이 TabM 중심**(`s903124/2nd-place-…-tabm`).
+TabM을 **RealMLP와 분기된(corr↓) + 충분히 강한 NN 축**으로 만들어 **stack_v8(4-member, logistic 0.954338)에 5번째 멤버로 추가**(스택 Δ≥+0.0001). **[[realmlp]] 교체 아님 — 추가**(사용자 확정 2026-06-05). 대회 증거: **2위 솔루션이 TabM 중심**(`s903124/2nd-place-…-tabm`).
 - **추가의 필요조건 = 분기(corr↓)**: 5번째가 기존(특히 RealMLP)과 중복이면 동화로 기여 0(#025/#029, exp_044 실패). 따라서 **corr 하락이 1차 목표**, 개별 강도는 그 위에서 기여 가능선 확보. (교체와 달리 "RealMLP보다 강함"은 불필요 — "다르면서 쓸만함"이 조건.)
 
 ## 실패 원인 (#029 — "약해서"가 아니라 "방치해서")

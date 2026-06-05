@@ -2,11 +2,18 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [030] CatBoost 튜닝(cat-tune) park — 천장 ≈0, 수동 중단 — 2026-06-05
+- **결정**: CatBoost Optuna 튜닝(cat-tune-l4c, resume patience5) **park**. 14 trial 시점 수동 중단(Lightning stop). best params는 `experiments/tuning/catboost_best.json`에 회수·보존, 스택 swap·exp_025 재학습 **안 함**.
+- **이유**: best = **trial#4 OOF 0.950079** (exp_025 0.950043 대비 **+0.000036**) — 이후 **비개선 trial 12개**(#5–#13) 전부 best 못 넘음 = 사실상 수렴. 스택 coef 0.10 반영 시 기여 ≈0, 목표 격차 +0.00057 대비 **트랙 천장 ≈0**(트랙 천장 게이트 규칙). best params: lr0.0286/depth9/l2 1.97/subsample0.796/max_ctr_complexity1.
+- **patience 미발화 버그(별건, 미수정)**: `tune_catboost.py`의 `NoImprovementStop`은 staleness를 **프로세스 메모리**에 둠 → resume 시 study.db는 trial만 복원하고 콜백 카운터는 0부터 → l4c 첫 완료 trial이 best 재초기화로 stale 소모, **resume 전 누적 staleness 유실** → patience=5인데 7개 비개선에도 안 멈춤. 향후 수정 시 staleness를 `study.user_attrs`에 저장(resume-safe). park이라 지금 미수정.
+- **대안·트레이드오프**: max_ctr_complexity 등 CatBoost 고유 노브 탐색했으나 포화. 마진 레버 소진 확인(#021/#028과 동형). 남은 천장 돌파 경로 = NN 축 추가(TabM 개선, #029→[[tabm]]).
+
 ## [029] TabM park (새 NN축 실패) + RealMLP n_ens=24(exp_046) 채택 → stack_v8 OOF 0.954338 — 2026-06-05
 - **결정**: ① **TabM park** (exp_044 no-bins full, exp_045 native-cross fold0 둘 다). non-GBDT 새 decorrelated 축 시도 종료. ② **RealMLP n_ens 15→24(exp_046) 채택** — RealMLP 멤버 교체(exp_032 대체), stack_v8 base.
 - **TabM 근거(게이트 실패)**: exp_044 개별 OOF 0.95083. 5번째 멤버 스택 게이트 = best메타 logistic **0.954338→0.954333(−0.000005)**, equal/rank 악화(−0.00007~−0.0001), nnls만 +0.000063(but nnls는 최저 메타). **best 개선 0 → park.** 원인: TabM corr ↔RealMLP **0.9811**·↔LGBM 0.9816·↔CatBoost 0.9691 = 전부 ~0.98, **RealMLP의 약한 복제**(둘 다 NN+realmlp_fe_v2). fold0서 예측한 corr 0.97 동화(exp_038 0.9676/exp_045 native-cross 0.9741)가 full서 실현. bins는 PLR중복으로 해로움 확정(exp_037 0.9508 < exp_038 0.9520). → **NN 축은 RealMLP가 이미 점유, TabM 추가 무용**(XGB i_* park #025와 동형: 중복축 강화=스택 0).
 - **exp_046 근거**: 개별 OOF 0.951978(n_ens15)→**0.952384(n_ens24, +0.000406)**, 스택 logistic 0.954307→**0.954338(+0.000031)**, 全메타 +, RealMLP coef 0.166→0.199. 엄격 게이트(+0.0001) 미달이나 **같은 모델 drop-in 업그레이드(배깅↑·decorrelation 비용0·다운사이드 없음)** → 채택. seed-avg(#028 +0.000001)보다 전이 큼 = 비지배 멤버(coef 0.20)라 강화 여지 존재.
-- **현 best 스택 = stack_v8** (LGBM exp_034 + XGB exp_043 + RealMLP **exp_046** + CatBoost exp_025) logistic **0.954338**(미제출). 제출 최고 = stack_v7 Private 0.95395. **남은 레버**: CatBoost 튜닝(cat-tune-l4b 진행)·RealMLP ep/lr 스크린(exp_047-050 진행). exp_044/045·exp_032 OOF 대조군 보존.
+- **현 best 스택 = stack_v8** (LGBM exp_034 + XGB exp_043 + RealMLP **exp_046** + CatBoost exp_025) logistic **0.954338**(미제출). 제출 최고 = stack_v7 Private 0.95395. exp_044/045·exp_032 OOF 대조군 보존.
+- **RealMLP ep/lr park (exp_056, 2026-06-05)**: ep64/lr0.02 full 5-fold 개별 OOF **0.952765**(exp_046 0.952384 대비 **+0.000381**) 이나 **스택 swap 게이트 −0.000008**(stack_v9_eplr logistic 0.954330 < stack_v8 0.954338) → **미채택·park**. 원인: RealMLP가 LGBM·XGB와 corr 0.984~0.987 **포화** → 개별 마진↑이 스택 전이 0(seed-avg #028·n_ens #029 동형). **교훈: 포화 멤버(RealMLP)는 개별↑ 전이 안 됨 → 개별↑ 레버는 고분기 멤버(TabM hash64 corr0.965·CatBoost 0.959)에만 유효.** CatBoost HP 튜닝도 park(#030).
 - **⚠️ park 단서 = "이 설정에서"이지 TabM 천장 아님 (재도전 백로그)**: 실패 근본 원인 = **비대칭 투자**. RealMLP엔 yekenot arch+n_ens24+ep/lr 쏟고 TabM은 **순수 default TabM_D 무튜닝**(exp_044 params: n_epochs/tabm_k/lr/arch 전부 default) + **RealMLP 피처(realmlp_fe_v2, TE-float) 차용** → 개별 0.9508(튜닝 RealMLP 0.9524보다 낮음) + corr 0.9811(RealMLP 복제). 즉 "약함+중복"은 방치 산물. 대회상 TabM=상위 모델이므로 **정식 재도전**(① TabM-native 피처: raw 수치 PLR + native 범주 임베딩, TE 제거 → RealMLP와 분기 ② tabm_k·lr·epochs·arch 튜닝 ③ RealMLP **교체** 또는 추가를 스택 게이트로) 가치 있음. 단 둘 다 PLR-NN이라 튜닝 후도 corr 높을 위험 → **교체가 현실적**. **결정 보류**: cat-tune·ep/lr 결과 본 뒤 별도 트랙으로 (사용자, 2026-06-05).
 
 ## [028] LGBM seed-averaging(K=5) = 스택 중립 — 기록만, 미채택 — 2026-06-05
@@ -21,7 +28,7 @@
   - exp_041 Driver-freq(i_* 없음): 0.951431, 0.9809, **+0.000020**
   - exp_042 i_*+Driver-freq: 0.953215, 0.9894, **+0.000083**(근소미달)
   - **exp_043 i_*+3var-freq: 0.953288, 0.9928, +0.000103 ✅통과**
-- **메커니즘**: 강도(i_*)는 LGBM과 공유해 동화 압력↑(corr→0.995)이나, **RealMLP가 TE했던 3변수(Driver/Race_Compound/Race_Year)를 freq로 분기**하면 그 축에서 LGBM의 TE-Driver와 다른 split → corr 0.9951→**0.9928** 완화. 개별 강도(0.9533)가 잔여 상관 비용을 압도 → 순+. **분기축 1개(exp_042, +0.000083)→3개(exp_043, +0.000103)**로 게이트 통과 = gbdt_decorrelation_plan **인코딩 분기(L1) + 강도(i_*) 결합**이 핵심.
+- **메커니즘**: 강도(i_*)는 LGBM과 공유해 동화 압력↑(corr→0.995)이나, **RealMLP가 TE했던 3변수(Driver/Race_Compound/Race_Year)를 freq로 분기**하면 그 축에서 LGBM의 TE-Driver와 다른 split → corr 0.9951→**0.9928** 완화. 개별 강도(0.9533)가 잔여 상관 비용을 압도 → 순+. **분기축 1개(exp_042, +0.000083)→3개(exp_043, +0.000103)**로 게이트 통과 = [[gbdt]] **인코딩 분기(L1) + 강도(i_*) 결합**이 핵심.
 - **#025 정련**: "GBDT 강도 FE = 스택 무용"은 **value-FE 단독**에 한함. **value-FE(i_*) + 인코딩 분기(freq on TE vars)를 동시에** 주면 동화를 부분 회피해 성공. 강도와 decorrelation은 **다른 레버로 같이** 줘야 함(같은 i_*만 공유하면 동화).
 - **정직성·트레이드오프**: 절대 이득 작음(+0.000103, 게이트 간신히). LOO 천장(#021 XGB≈0) 밀었으나 안 깨짐. 누적 레버(seed-avg=중립 #028·n_ens 진행 중) 합산 시 목표 가능. exp_042(+0.000083)·exp_041·exp_035 OOF 는 대조군 보존. 산출물 `conf/features/xgb_combined_freq3.yaml`·`add_xgb_freq_features`.
 - **✅ LB 실측(2026-06-05 제출)**: stack_v7_logistic **Public 0.95346 / Private 0.95395** (직전 stack_v6 0.95347/0.95386 대비 Public −0.00001, **Private +0.00009**). **Private 신기록**, 목표 0.9540까지 격차 **+0.00014→+0.00005** 단축. OOF 0.954307 vs Private 0.95395 갭 +0.00036(Public 갭 +0.00085로 더 큼 — Private가 OOF에 더 정합). 죽은 XGB 멤버(coef 0.016)→살아있는 멤버(0.265) 교체가 Private +0.00009로 환산.
@@ -41,7 +48,7 @@
 - **결과(실측)**: **개별은 크게 향상** — XGB 0.951261→**0.953013**(+0.00175), CatBoost 0.950043→**0.951882**(+0.00184), best_iter 전부 수렴. **그러나 스택 swap 게이트 전부 FAIL**(vs stack_v6 logistic 0.954204): XGB 스왑 0.954210(**Δ+0.000006**)·CatBoost 스왑 0.954193(**−0.000011**)·둘 다 0.954177(**−0.000027**). kill criterion(Δ<+0.0001) 미통과.
 - **메커니즘**: `i_*` 가 XGB/CatBoost 를 exp_034(LGBM+i_*)의 **거의 복제**로 만듦 — corr 0.9864→**0.9951**. 개별 강도 이득이 다양성 손실로 정확히 상쇄. equal 블렌드는 멤버가 강해져 소폭↑이나, **우리가 쓰는 logistic(최적·제출 메타)은 이득 0**(중복=새 정보 없음). **LOO 포화(#021, XGB 한계기여 0.000000) 정확히 재현.**
 - **대조·교훈(#021 경계 실증)**: RealMLP v2 는 **비상관 축**(non-GBDT)이라 강도(+0.0033)가 순이득이었으나(ADR #021), **중복 GBDT 는 강도 승 불성립**. "강도 vs 다양성"에서 **강도는 decorrelated 축에서만 순이득**. → 남은 도약은 새 decorrelated 축(`tabm_fe_floorbin`=TabM+floor/bin, RealMLP 와 다른 입력표현으로 corr↓ 노림)에서만. 산출물 `conf/features/{xgb,catboost}_combined.yaml`·exp_035/036 OOF 는 대조군 보존.
-- **후속 계획**: 동화를 피해 XGB가 스택서 efficiency 내려면 강도 아닌 **decorrelation FE**가 필요 → `docs/wiki/gbdt_decorrelation_plan.md`(L1 Driver freq-enc / L2 field_pit_rate 주입 / L4 monotone 제약, 판정=스택 swap+corr). 단 LOO 천장 낮아 보조 레버.
+- **후속 계획**: 동화를 피해 XGB가 스택서 efficiency 내려면 강도 아닌 **decorrelation FE**가 필요 → [[gbdt]](L1 Driver freq-enc / L2 field_pit_rate 주입 / L4 monotone 제약, 판정=스택 swap+corr). 단 LOO 천장 낮아 보조 레버.
 
 ## [024] LGBM 결합FE(exp_034) 채택 — stack_v6 신기록 Private 0.95386 (목표 코앞) — 2026-06-05
 - **결정**: LGBM 스택 멤버를 exp_030(튜닝 base)→**exp_034**(튜닝 + i_*상호작용 + year-cat + stint-cat 결합, `features=lgbm_combined`+driver_te+aug)로 스왑. stack_v6 **logistic·equal 둘 다 제출**.
@@ -64,7 +71,7 @@
 - **대안·다음**: ① `i_*`를 스택 멤버 LGBM(exp_030 튜닝본)에 적용해 **개별·스택 순효과** 확인(곱이 튜닝·TE와 중복인지 게이트), ② quantile 비닝·floor 범주화 등 #019 후보를 GBDT 에도 A/B, ③ 단 LOO상 GBDT 3종 포화(#021)라 **스택 천장 돌파는 새 축(TabM) 우선** — `i_*`는 LGBM 단독 강화로 한정 평가. 과몰입 가드: 곱 외 후보는 Δ<+0.0003 시 즉시 park.
 
 ## [021] RealMLP v2(exp_032) 채택 — 배깅 중심으로 스택 신기록 OOF 0.953504 — 2026-06-05
-- **결정**: RealMLP v2(`exp_032`)를 스택 RealMLP 멤버로 **채택**(exp_024 대체). 레시피 = ep64 × **n_ens=15**(배깅) + **Stint_cat(5+)** + yekenot arch(hidden[512,256,128]·silu·plr_sigma2.33·embedding_size6), `features=realmlp_fe_v2`+aug, 5-fold. 계획 `realmlp_v2_plan.md`(2단계), ADR #013개정2.
+- **결정**: RealMLP v2(`exp_032`)를 스택 RealMLP 멤버로 **채택**(exp_024 대체). 레시피 = ep64 × **n_ens=15**(배깅) + **Stint_cat(5+)** + yekenot arch(hidden[512,256,128]·silu·plr_sigma2.33·embedding_size6), `features=realmlp_fe_v2`+aug, 5-fold. 계획 [[realmlp]](v2 배깅 2단계), ADR #013개정2.
 - **결과**: 개별 OOF 0.948773→**0.951978**(+0.0033, 배깅이 핵심 레버 — 1단계 스크리닝 exp_031 fold0 +0.0013로 선검증). **스택 swap 게이트 통과**: stack_v4(meta-OOF 0.952878)에서 exp_024→exp_032 스왑 → **logistic 0.953504 / equal 0.953275**(Δ **+0.000626**, 게이트 +0.0003의 2배). Kaggle P100 ~60분.
 - **🏁 제출(LB 검증, 2026-06-05)**: stack_v5 **logistic·equal 둘 다 제출**. **logistic Public 0.95272 / Private 0.95329**(신기록), equal Public 0.95244 / Private 0.95304. 기존 최고 stack_v4 균등(Private 0.95273) 대비 **logistic +0.00056**. **이번엔 logistic>equal**(Private +0.00025) — meta-OOF 예측순서(logistic 0.953504>equal 0.953275)와 LB 일치, OOF 신호 신뢰 재확인(#006). OOF≈Private 갭 logistic **−0.00021**. 목표 Private 0.9540까지 격차 +0.00127→**+0.00071**(거의 절반 축소).
 - **메커니즘 주의(트레이드오프)**: v2는 강해지며 **GBDT와 rank-corr 0.90→0.95**(decorrelation 일부 상실 — RealMLP의 스택 가치 원천이 비상관성이었음, LOO 확인). 그럼에도 개별 강도(+0.0033)가 상관 손실을 압도해 순효과 +. "강도 vs 다양성"이 이번엔 강도 승.
@@ -81,11 +88,11 @@
 - **트레이드오프/다음**: 현 멤버로는 스택 ~천장(0.9529). 추가 도약은 **새 모델군(TabM 등)** 또는 RealMLP v2(Year+Stint(5+) cat, #12). seed averaging(#016) 미적용.
 
 ## [019] RealMLP 전용 피처 분기 개방 — ADR #010 기각의 비(非)전이 (exp_024+ 계획) — 2026-06-04
-- **결정**: RealMLP(non-GBDT)에 한해 **기각/미시도 피처를 재검토하는 FE 분기를 연다**. ADR #015("다양성용 신규 FE 금지")의 **표적 예외 확장** — 단, **RealMLP 전용 피처셋**(GBDT 파이프라인 미적용)으로만, **판정은 블렌드 OOF + GBDT corr**(단독 아님, #015 레버4). 상세·후보·프로토콜: `docs/wiki/realmlp_feature_divergence.md`.
+- **결정**: RealMLP(non-GBDT)에 한해 **기각/미시도 피처를 재검토하는 FE 분기를 연다**. ADR #015("다양성용 신규 FE 금지")의 **표적 예외 확장** — 단, **RealMLP 전용 피처셋**(GBDT 파이프라인 미적용)으로만, **판정은 블렌드 OOF + GBDT corr**(단독 아님, #015 레버4). 상세·후보·프로토콜: [[realmlp]].
 - **근거(원리)**: 기각의 대부분은 ADR #010("GBDT 단조변환 불변·native split이 임계 최적화")에 근거하나 **이는 GBDT 전용** — MLP는 단조변환 불변이 아니고 native split도 없어 **"트리가 이미 뽑는다"가 성립 안 함**. #015의 'FE 공간 소진'도 GBDT 정확도 기준이라 메커니즘 다른 RealMLP엔 재개방.
 - **근거(외부 확증, kaggle-researcher)**: S6E5 **8위 RealMLP가 digit features·frequency encoding·target encoding 실사용**. RealMLP_TD 내장(robust scaling+smooth clip+**PLR 수치임베딩**)→외부 정규화 중복. 고카디 Driver는 **regularized TE(float) > embedding**(문헌)→`driver_te` 재사용(#018) 검증. 2위 TabM은 `rtdl_num_embeddings` 사용.
 - **후보 우선순위 (8위 yekenot 실코드 반영, 2026-06-04 갱신)**: ①산술 상호작용(yekenot 5개) ②quantile 비닝·floor-범주화 ③범주 cross+그 cross에만 TE(Race×Compound/Race×Year) ④cyclical(RaceProgress sin/cos) ⑤field_pit_rate 부활(레버4). 낮음: is_stable_delta·외부정규화·Driver×Race TE.
-- **인코딩 확정 결정 (2026-06-04)**: ① **고카디 Driver = TE 유지(`driver_te`), embedding 아님** — RealMLP 고카디 embedding 은 논문(arXiv:2407.04491) 검증 약함·reg-TE>embedding(2104.00629). yekenot 은 Driver embedding+count 였으나 우리는 분기. ② **Race/Compound frequency enc 미사용** — 저카디라 임베딩 중복(실측 freq AUC<TE·종속). 상세: `realmlp_feature_divergence.md`.
+- **인코딩 확정 결정 (2026-06-04)**: ① **고카디 Driver = TE 유지(`driver_te`), embedding 아님** — RealMLP 고카디 embedding 은 논문(arXiv:2407.04491) 검증 약함·reg-TE>embedding(2104.00629). yekenot 은 Driver embedding+count 였으나 우리는 분기. ② **Race/Compound frequency enc 미사용** — 저카디라 임베딩 중복(실측 freq AUC<TE·종속). 상세: [[realmlp]].
 - **8위 실코드 분석**: `yekenot/ps-s6-e5-realmlp-pytabkit`(CV~0.954) = 상호작용+floor범주화+count+quantile비닝+cross+TE(cross만), `n_ens=20`/`n_epochs=5` 배깅·튜닝. "digit features"(리서처 추측)는 미사용. 우리 exp_023(raw+default)은 baseline.
 - **순서·게이트**: exp_023 baseline(공유피처) OOF·corr 선확보 → 1-fold 벤치 스크리닝 → 5-fold 블렌드 판정. digit은 합성신호 의존이라 EDA 사전검증.
 - **트레이드오프/리스크**: 모델별 피처 분기 = 파이프라인 복잡↑·재현부담(ADR #015가 경계했던 비용). 따라서 **RealMLP 전용·블렌드 판정·게이트**로 통제. 절대이득 불확실(digit 추측 포함). 미시도 신규(freq·cyclical)는 #015 레버4 밖이라 본 ADR로 별도 승인.
@@ -164,7 +171,7 @@
 - **반영**: 이슈 #10(M4 Ensemble, 활성) / #11(M5 Tuning, blocked). NEXT_SESSION 우선순위 재정렬, CLAUDE.md 모델링 순서 명시.
 - **트레이드오프**: 튜닝 안 된 개별 모델로 앙상블을 먼저 구성 → 단일 모델 최고점은 잠시 미달일 수 있으나, 최종 앙상블 기준 효율이 목표. 다양성 확보 후 일괄 튜닝.
 - **개정 (2026-06-04)**: LGBM Optuna 튜닝(`src/tune_lgbm.py`, exp_026)을 앙상블 확정 **前 선행** — 원 결정의 예외. **사유**: Kaggle GPU 가 RealMLP/CatBoost 로 점유된 동안 유휴 **로컬 CPU 를 생산적으로 활용**(GPU·CPU 병렬 진행). 원 연기 사유(사전 과튜닝→다양성↓·앙상블 우선 ROI)는 유효하나, *앙상블 우선 순서를 깨지 않는 병렬 작업*이라 허용. **가드**: 튜닝 결과는 단독 OOF 가 아니라 **스택 OOF 로 채택 판정**(과적합·Public 갭 #006), 앙상블 우선 원칙 불변. ⚠️ CPU 경합 시 사용자 확인 후 스케줄(`ask-before-overlap`). 후속으로 `kill_criterion` 사전 중단조건 필드 도입(`workflow_retrospective.md`).
-- **개정2 (2026-06-04)**: **RealMLP v2**(배깅 `n_ens` + 싼-레시피 lr/epoch + yekenot arch 차용)도 앙상블 확정 前 선행 허용. 목적 = **MLP 배깅 활성화로 스택 멤버 강화**(exp_024 가중 0.26). full Optuna 스터디는 **여전히 보류**(RealMLP run 3.7h, 비현실적). 채택은 **스택 게이트**(meta-OOF +0.0003↑ or 가중 상승), 미만 시 exp_024 유지. 계획·1-fold 스크리닝: `realmlp_v2_plan.md`.
+- **개정2 (2026-06-04)**: **RealMLP v2**(배깅 `n_ens` + 싼-레시피 lr/epoch + yekenot arch 차용)도 앙상블 확정 前 선행 허용. 목적 = **MLP 배깅 활성화로 스택 멤버 강화**(exp_024 가중 0.26). full Optuna 스터디는 **여전히 보류**(RealMLP run 3.7h, 비현실적). 채택은 **스택 게이트**(meta-OOF +0.0003↑ or 가중 상승), 미만 시 exp_024 유지. 계획·1-fold 스크리닝: [[realmlp]].
 
 ## [012] cross-row 필드 피처(field_pit_rate) 기각 — #010 통과해도 raw 가 신호를 흡수 — 2026-06-04
 - **결정**: 동일 `(Race,Year,LapNumber)` LOO 필드 피트율(`PitStop` 집계, 후보2)을 **기각·revert**. exp_017 = exp_016 골격 + `field_pit_rate`.

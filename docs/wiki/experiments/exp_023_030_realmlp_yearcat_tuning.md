@@ -34,4 +34,4 @@
 ## 산출물·참조
 - OOF: `experiments/oof/exp_023·024_rmlp_fe_yc·025·026·027·028·029·030*.csv` / 제출: `stack_v4_{equal,logistic}.csv`
 - 학습: `src/train.py`(LGBM)·`src/train_xgb.py`·`src/train_catboost.py`·`src/train_realmlp.py`·`src/tune_lgbm.py`·`src/stack.py`
-- 결정: [[decisions]] #018·#019·#020 / 계획: `realmlp_kaggle_plan.md`·`stacking_plan.md` / 다음: [[exp_032_036_realmlp_v2_gbdt_fe]]
+- 결정: [[decisions]] #018·#019·#020 / 계획: [[realmlp]]·`stacking_plan.md` / 다음: [[exp_032_036_realmlp_v2_gbdt_fe]]

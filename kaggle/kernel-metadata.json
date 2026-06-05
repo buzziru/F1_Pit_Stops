@@ -1,18 +1,9 @@
 {
-  "id": "buzziru/tabm-exp055-natfull",
-  "title": "tabm exp055 natfull",
-  "code_file": "tabm_exp055_natfull_fold0.ipynb",
-  "language": "python",
-  "kernel_type": "notebook",
-  "is_private": true,
-  "enable_gpu": true,
-  "enable_internet": true,
-  "dataset_sources": [
-    "buzziru/f1-pit-src",
-    "aadigupta1601/f1-strategy-dataset-pit-stop-prediction"
-  ],
-  "competition_sources": [
-    "playground-series-s6e5"
-  ],
-  "kernel_sources": []
+  "id": "buzziru/realmlp-exp065-nrefit1-stintnum",
+  "title": "realmlp exp065 nrefit1 stintnum",
+  "code_file": "exp_065_rmlp_nrefit1_stintnum_fold0.ipynb",
+  "language": "python", "kernel_type": "notebook",
+  "is_private": true, "enable_gpu": true, "enable_internet": true,
+  "dataset_sources": ["buzziru/f1-pit-src","aadigupta1601/f1-strategy-dataset-pit-stop-prediction"],
+  "competition_sources": ["playground-series-s6e5"], "kernel_sources": []
 }

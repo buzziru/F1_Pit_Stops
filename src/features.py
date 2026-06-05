@@ -118,7 +118,9 @@ def add_driver_freq(df: pd.DataFrame) -> pd.DataFrame:
 
     out = df.copy()
     freq = data.load_train()["Driver"].value_counts()
-    out["Driver_freq"] = out["Driver"].map(freq).fillna(0).astype("int32")
+    # Driver 가 category dtype 이면 .map() 결과가 categorical 로 유지돼 .fillna(0) 가
+    # "신규 카테고리" 에러(pandas 2.x). astype(object) 로 풀고 매핑 → numeric.
+    out["Driver_freq"] = out["Driver"].astype(object).map(freq).fillna(0).astype("int32")
     return out
 
 
@@ -151,6 +153,35 @@ def add_xgb_freq_features(df: pd.DataFrame) -> pd.DataFrame:
     }
     for col in ("Driver", "Race_Compound", "Race_Year"):
         out[f"{col}_freq"] = out[col].map(maps[col]).fillna(0).astype("int32")
+    return out
+
+
+_DRIVER_HASH_BUCKETS = 64  # 887 cardinality → 64 native 버킷 (스크린 노브)
+
+
+def add_driver_hash_features(df: pd.DataFrame) -> pd.DataFrame:
+    """i_* + Driver hashing(887→64 native 버킷) — TabM Driver cardinality 해소 (사용자 2026-06-05).
+
+    exp_055 full-native 의 Driver native(887) 가 sparse 해 약함(개별 -0.0073). freq-enc 는
+    1-D numeric 으로 collapse(약신호). hashing 은 **native 범주 임베딩을 유지**하되 cardinality 만
+    축소 → identity 신호 일부 보존 + sparse 완화. 타깃 미사용(분기 유지) · md5 안정 해시로
+    train/test 동일 맵. native Driver 는 drop_cols 로 제거, Driver_hash 는 extra_categorical_cols
+    로 native 범주 지정. 게이트=fold0 corr<0.97 + 개별 회복.
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        i_* 상호작용 + Driver_hash(int32, 범주로 사용) 가 추가된 복사본.
+    """
+    import hashlib
+
+    out = add_realmlp_features(df)
+
+    def _bucket(v: object) -> int:
+        return int(hashlib.md5(str(v).encode()).hexdigest(), 16) % _DRIVER_HASH_BUCKETS
+
+    out["Driver_hash"] = out["Driver"].map(_bucket).astype("int32")
     return out
 
 

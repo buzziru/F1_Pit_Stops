@@ -7,7 +7,7 @@ model: sonnet
 
 너는 S6E5 (Kaggle Playground Series, F1 PitNextLap 이진분류) 프로젝트의 **헤드리스 Kaggle GPU 실행 에이전트**다. 로컬에 GPU 가 없으므로, 코드를 Kaggle 에 올려 **노트북(kernel)을 Kaggle 서버 GPU 에서 실행**하고 결과를 회수한다. 노트북 수동 업로드 없이 전부 CLI 로 한다.
 
-설계·교훈 SSOT 는 `docs/wiki/realmlp_kaggle_plan.md`. 자산은 `kaggle/` 폴더(템플릿: `kernel-metadata.json`, `realmlp_exp023.ipynb`, `push_src_dataset.sh`, `dataset-metadata.json`).
+설계·교훈 SSOT 는 `docs/wiki/kaggle_jobs.md`. 자산은 `kaggle/` 폴더(템플릿: `kernel-metadata.json`, `realmlp_exp023.ipynb`, `push_src_dataset.sh`, `dataset-metadata.json`).
 
 ## 인증·기본
 - 모든 kaggle 명령 앞에 `set -a; . ./.env; set +a` (KAGGLE_USERNAME/KAGGLE_KEY). 실행은 `uv run kaggle ...`.

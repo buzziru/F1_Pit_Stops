@@ -1,6 +1,6 @@
 # Kaggle GPU 커널 — 헤드리스 실행 (모델 무관 SSOT)
 
-> 2026-06-05 작성(`realmlp_kaggle_plan.md`에서 분리). `src/` 코드를 **Kaggle GPU 커널**에서
+> 2026-06-05 작성. `src/` 코드를 **Kaggle GPU 커널**에서
 > 헤드리스(`kaggle kernels` CLI)로 돌리는 **모델 무관 실행 절차·교훈** SSOT.
 > GPU 모델(RealMLP·TabM·CatBoost…) 실행 시 이 문서를 따른다. 대안 경로 = [[lightning_jobs]].
 > kaggle-runner 에이전트의 교훈 SSOT(= 이 문서).
@@ -64,6 +64,32 @@ cp /tmp/<out>/{oof,submissions,logs}/<exp>.* experiments/{oof,submissions,logs}/
 
 ## 자산
 `kaggle/` : 노트북 `.ipynb` 들, `kernel-metadata.json`(push마다 id/code_file 교체), `dataset-metadata.json`, `push_src_dataset.sh`, `README.md`.
+
+## RealMLP 실행 기록 (Kaggle GPU 이관 첫 정립, 2026-06-04~05)
+
+> RealMLP 모델링·피처 결정은 [[realmlp]] SSOT. 본 섹션은 RealMLP의 **Kaggle GPU 실행 런북·결과**.
+
+### 실행 결과·후속
+- **exp_023 baseline → exp_024 FE → exp_032 RealMLP v2 채택**(ADR #021): ep64×**n_ens=15** 배깅 + yekenot arch(hidden[512,256,128]·silu·plr_sigma2.33·emb6) + `realmlp_fe_v2`. 개별 OOF 0.951978, 스택 신기록 견인.
+- **n_ens 15→24(exp_046) 채택**(ADR #029): 개별 0.952384(+0.000406), 스택 logistic +0.000031. drop-in 업그레이드(다운사이드 0).
+- **ep/lr 스크린 진행 중**(exp_047-050, n_ens=8 fold0): "싼 배깅" 논지(tuned lr이 저-ep 열쇠) 검증.
+
+### 배경 / 트리거
+- **1-fold CPU 벤치(2026-06-04)**: train 452,683행(대회 351,312+증강 101,371), **~15.8초/epoch**(4코어). RealMLP_TD 고정 256 epoch → **fold0 약 67분 / 5-fold 약 5.6시간**. → **로컬 CPU 비현실적, Kaggle GPU 이관 확정.** GPU 기대 fold당 3~7분 / 5-fold 20~40분.
+- **Kaggle 이관은 이번이 처음**(CatBoost GPU는 Kaggle 미사용). 본 런북이 재사용 가능한 이관 절차의 첫 정립.
+
+### 구현·검증 완료 (2026-06-04)
+- **코드**: `src/train_realmlp.py`(train_catboost 미러) + `conf/model/realmlp.yaml`(device·n_cv·n_epochs). RealMLP 차이 반영 — 범주형 값 처리·NaN 플레이스홀더(`_CAT_NAN`), **sample_weight 미지원→aug w1.0 plain concat 만**(w≠1.0 시 ValueError), best_iter 비해당→`None`.
+- **스모크 통과**(로컬 CPU·2ep·5-fold, exp_id=smoke): `run()` 전 경로 OK — OOF `(439140,2)` / submission `(188165,2)` / log JSON 정상.
+- **src Dataset push 완료**: `buzziru/f1-pit-src`(private). `-r zip` 업로드가 `src/`·`conf/` 폴더로 정상 추출 확인.
+- **증강 Dataset 검증**: `aadigupta1601/f1-strategy-dataset-pit-stop-prediction`, 파일=`f1_strategy_dataset_v4.csv`(13.16MB=로컬 v4) 단일 → `assert len==101371` 통과.
+- **⚠️ 경로 충돌 수정**: Kaggle `/kaggle/working`에 OOF·submission·log를 같이 두면 `exp_023.csv` **이름 충돌** → 노트북이 `working/{oof,submissions,logs}` **하위 디렉터리로 분리**.
+- **자산**(`kaggle/`): `realmlp_exp023.ipynb`, `kernel-metadata.json`, `dataset-metadata.json`, `push_src_dataset.sh`, `README.md`.
+
+### 흐름·판정
+- push/실행/회수 절차는 위 「절차」 섹션 SSOT. RealMLP 노트북 흐름: `pip install pytabkit` → `src` import + 경로 override → `conf/{model/realmlp,features/realmlp_fe_v2}.yaml`로 `cfg` 구성 → `run(cfg)`(use_wandb=false) → 검증. 예상 GPU **20~40분**(v2 n_ens 多는 더 김).
+- **채택 판정(#015/#017)**: 단독 OOF + GBDT와 OOF 상관 + 스택 게이트. 단독 약세 무관 — 블렌드/스택이 이기면 채택(실행 결과: exp_032 v2 채택, exp_046 n_ens24 swap — ADR #021/#029).
+- **교훈 1[T4 필수] 특히 해당**(RealMLP는 torch 모델, P100=sm_60 미지원).
 
 ## Sources
 Kaggle API(`kaggle` CLI 2.2.0) · 실측(exp_023~046, 2026-06-04~05).

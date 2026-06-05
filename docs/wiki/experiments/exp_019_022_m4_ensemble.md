@@ -38,7 +38,7 @@ LGBM 단일 모델 FE 공간 소진(ADR #014) 후, **상관 낮은 모델군 추
 - **균등가중 우선**: 최적가중(w_cat≈0.28, OOF 0.951655)은 OOF 과적합 소지 → 참고용. 제출은 균등 1/3.
 
 ## 교훈
-1. **GBDT 3종은 본질적으로 상관 높다**(LGBM↔XGB **0.9944**). 표현·알고리즘 분기로 corr 를 0.985까지 낮춰도 블렌드 절대이득은 **+0.0002대 LB** 에 그침 → 큰 도약은 **모델군 추가(non-GBDT)** 필요. → exp_023 RealMLP(ADR #018, `realmlp_kaggle_plan.md`)로 이어짐.
+1. **GBDT 3종은 본질적으로 상관 높다**(LGBM↔XGB **0.9944**). 표현·알고리즘 분기로 corr 를 0.985까지 낮춰도 블렌드 절대이득은 **+0.0002대 LB** 에 그침 → 큰 도약은 **모델군 추가(non-GBDT)** 필요. → exp_023 RealMLP(ADR #018, [[realmlp]])로 이어짐.
 2. **CatBoost 는 native ordered TS 가 외부 OOF TE 보다 우월**(다양성·정확도 모두). 인코딩 분기는 비용 0의 다양성 레버.
 3. **early-stopping cap 미발화 = 미완 학습** — best_iter 검수 필수(exp_021 뒤늦게 발견).
 4. **OOF≈Private 재확인**(갭 +0.00001) — 앙상블에서도 OOF 1차 신뢰 유지(ADR #006).
@@ -46,4 +46,4 @@ LGBM 단일 모델 FE 공간 소진(ADR #014) 후, **상관 낮은 모델군 추
 ## 산출물·참조
 - OOF: `experiments/oof/exp_016·019·020·021·022.csv` / 제출: `experiments/submissions/blend_3way_eq.csv`
 - 학습 경로: `src/train.py`(LGBM) · `src/train_xgb.py` · `src/train_catboost.py` / conf `model: lgbm|xgb|catboost`
-- 결정 근거: [[decisions]] #017. 다음 라운드(non-GBDT): `realmlp_kaggle_plan.md`
+- 결정 근거: [[decisions]] #017. 다음 라운드(non-GBDT): [[realmlp]]

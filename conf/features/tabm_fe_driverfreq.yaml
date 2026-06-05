@@ -1,0 +1,11 @@
+# TabM Phase 1 변형 (b) — Driver 직접(freq) 인코딩 (tabm_improvement_plan, 사용자 2026-06-05).
+# exp_055 full-native에서 Driver native(887 cardinality, 개별 -0.0073 약함)만 Driver_freq(count,
+# numeric)로 교체. TE 제외(분기 핵심) → RealMLP(TE-float)와 다른 신호축(등장빈도 vs 피트성향)으로
+# corr↓ 유지 + sparse 임베딩 문제 회피. 나머지(i_*·cross·Stint_cat·Year native·bins 없음) exp_055 동일.
+# 빌더 add_xgb_decorr_features = add_driver_freq(add_realmlp_features) : i_* + Driver_freq (모델 무관).
+# 게이트(fold0): corr<0.97 유지 + 개별 회복(vs exp_055 0.9436). model=tabm 전용.
+feature_builder: add_xgb_decorr_features
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Driver]
+extra_categorical_cols: [Year, Stint_cat, Race_Compound, Race_Year]
