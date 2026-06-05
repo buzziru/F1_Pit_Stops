@@ -1,8 +1,23 @@
 # 설계/검토 — RealMLP 전용 피처 분기 (exp_024+ 후보)
 
-> 2026-06-04 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **검토 완료·8위 실코드 반영·인코딩 결정 확정 — 구현 대기**(exp_023 baseline 선행) · 관련 [[decisions]] #019(결정)·#015(레버4)·#010(GBDT 불변)·#018(RealMLP)
+> 2026-06-04 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **구현·채택 완료**(`realmlp_fe_v2` = exp_032/046) · 관련 [[decisions]] #019(결정)·#021(v2 채택)·#022/#026/#027(i_* GBDT 개방)·#029
 >
 > **확정 결정**: 고카디 Driver=**TE 유지**(embedding 아님), Race/Compound **freq 미사용**. FE 후보는 8위 yekenot 실코드 기반(상호작용·비닝·cross).
+
+## 채택 결과 (2026-06-05)
+
+`realmlp_fe_v2` = **Rank1 상호작용(i_* 5종) + Rank3 cross-TE(Race_Compound·Race_Year) + Year·Stint_cat(범주)**. exp_032(채택)·exp_046(n_ens24)에 적용. Driver=TE 유지.
+
+| 후보 | 결정 | 근거 |
+|---|---|---|
+| Rank1 **i_* 상호작용** | ✅ 채택(RealMLP) + **GBDT에도 개방** | RealMLP v2 핵심. **그리고 GBDT A/B Δ+0.00274로 LGBM 채택**(ADR #022/#026) — "MLP 전용" 가정 깨짐, i_*는 비축정렬 곱/비율이라 GBDT에도 유효(#010 carve-out) |
+| Rank2 **floor/quantile 비닝** | ❌ **기각(실측 유해)** | TabM에 적용(exp_037) → no-bins(exp_038)보다 **−0.00114**. PLR 수치임베딩과 **중복·손실**. RealMLP/TabM 공통 |
+| Rank3 **cross-TE**(Race×Compound·Race×Year) | ✅ 채택 | realmlp_fe_v2 포함. XGB는 이걸 **freq-enc로 분기**해 decorrelation 성공(#027) |
+| Rank4 Cyclical(sin/cos) | ❌ 제거 | 단조(비주기) 피처에 부적절(코드리뷰) |
+| Rank5 field_pit_rate | ⏸ 미사용 | 잔차신호 미미(#012 게이트), 후순위 |
+
+- **배깅(n_ens)**: yekenot의 "싼 배깅"이 핵심 레버였음 확인 → n_ens=15(exp_032)→**24(exp_046)** 채택. **ep/lr** 튜닝(저-ep+tuned-lr) 스크린 진행 중(exp_047-050).
+- **인코딩 분기 = decorrelation 도구로 일반화**: Driver TE / XGB freq / CatBoost native / TabM native-embed — 모델별 다른 인코딩이 스택 corr↓의 핵심(#017/#027).
 
 ## 핵심 원리 (검토 결론)
 지금까지 FE 기각의 대부분은 **ADR #010**("GBDT는 단일 피처 단조변환에 **불변**, native categorical split이 임계를 이미 최적화")에 근거한다. 이 논리는 **GBDT 전용**이다 — **RealMLP(MLP)는 단조변환 불변이 아니고 native split도 없다.** 따라서 "트리가 이미 뽑으니 무용"으로 기각된 피처가 **MLP엔 유효**할 수 있다. 또한 **ADR #015 레버4**가 이미 *"이미 구현·누수검증된 기각 피처를 다양성 모델에만 주입, 블렌드 OOF로 판정"*을 허용한다. → 본 분기는 ADR #015("신규 FE 금지")의 **예외 확장**(근거인 'FE 공간 소진'은 GBDT 정확도 기준이라 메커니즘이 다른 RealMLP엔 재개방).

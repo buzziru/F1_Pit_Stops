@@ -3,6 +3,22 @@
 > 권고: 손튜닝 블렌드 가중(균등 vs 가중) 논쟁을 **CV'd 메타러너**로 데이터 기반 종결하고,
 > 쌓아둔 다양성(LGBM/XGB/CatBoost/RealMLP)을 짜낸다. 관련 [[decisions]] #015·#017·#006.
 > ⚠️ 채택/기각 시 ADR 추가. 결정 기준은 §6.
+>
+> **상태: 채택·운영 중** — `src/stack.py` 구현 완료, **logistic 메타러너가 best**(균등/nnls/rank_mean 상회), Private 3연속 우위.
+
+## 0. 결과 이력 (2026-06-05 갱신)
+
+| 스택 | 멤버(변경점) | meta-OOF(logistic) | Private(제출) |
+|---|---|---|---|
+| stack_v4 | LGBM-tuned+XGB+CatBoost+RealMLP(exp_024) | — | 0.95273 |
+| stack_v5 | RealMLP v2(exp_032)로 교체 | 0.953504 | 0.95329 |
+| stack_v6 | LGBM 결합FE(exp_034) 채택 | 0.954204 | **0.95386** |
+| stack_v7 | XGB freq-enc(exp_043) 교체(#027) | 0.954307 | **0.95395**(현 제출 최고) |
+| **stack_v8**(현 best) | RealMLP n_ens24(exp_046) 교체(#029) | **0.954338** | 미제출 |
+
+- **메타러너 결론**: **logistic**(L2 on logit)이 v6·v7·v8 모두 best. equal은 v7에서 죽은 멤버 제거 후 +0.000427 점프했으나 logistic 하회. **nnls는 RealMLP에 0 가중**(중복 판단) 경향 — logistic이 비선형 기여 더 살림. → §5 "1순위 nnls" 예상과 달리 **실측 logistic 우위**.
+- **멤버 진화**: exp_016→**exp_034**(LGBM 결합FE) / exp_019→exp_028→**exp_043**(XGB i_*+freq-enc 분기, #027) / exp_022→**exp_025**(CatBoost year-cat) / exp_024→exp_032→**exp_046**(RealMLP v2 n_ens24).
+- **포화·동화 교훈**(#021/#025/#028/#029): 개별↑이 스택 전이 보장 안 함. **새 축(decorrelation)만 순이득** — XGB freq-enc 성공(#027), seed-avg 중립(#028), TabM/i_* 동화 park(#025/#029). 목표 격차 +0.00005(노이즈 바닥).
 
 ## 1. 왜 스태킹
 - 현재 3-way **균등 vs 최적가중**을 손으로 비교 중(#017): 균등 0.951642, 가중은 OOF 과적합 우려로 보류. RealMLP(exp_023) 편입 가중(0.10~0.15)도 미결.
@@ -61,6 +77,7 @@ save: experiments/oof/stack_*.csv, submissions/stack_*.csv; report weights + AUC
 3. `src/stack.py` 구현 + 3 메타러너 + 균등/rank-mean 대조.
 4. §6로 판정 → 채택 시 제출(마일스톤) + ADR.
 5. (이후 마무리 단계) 스택이 더 못 오르면 **새 모델군**(TabM 등) 1개 추가 후 재스택, 아니면 마감.
+   - **실행 결과**: TabM 추가 시도(exp_044/045) → 게이트 실패·park(#029, RealMLP와 corr 0.98 동화). 현재 잔여 레버 = CatBoost 튜닝(cat-tune-l4b)·RealMLP ep/lr(exp_047-050). TabM 정식 재도전(native 피처+튜닝, RealMLP 교체)은 백로그.
 
 ## 리스크
 - 메타 가중의 OOF 과적합: 439k행·소수 피처·정규화/비음수 제약 → 위험 낮음(가중블렌드보다 안전). 그래도 §6 균등 대조 필수.

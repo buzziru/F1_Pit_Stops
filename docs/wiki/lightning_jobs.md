@@ -74,13 +74,7 @@ lightning run job --name cat-yearcat-l4-test --machine L4 \
 - ✅ 2026-06-04 **end-to-end 검증 완료**: 제출→L4 21분 Completed→artifact 회수→wandb(F1-Pit) 동기화. **결과 exp_025 OOF 0.950043**(exp_022 native 0.949811 대비 **+0.00023**, Year-cat 이득). 단 exp_022 와 corr 0.993 → 스태킹은 둘 중 하나만.
 
 ## Kaggle 대비
-| | Kaggle GPU | Lightning Job |
-|---|---|---|
-| 코드 | `.ipynb` 변환 + src Dataset push | `.venv/bin/python -m src...` 그대로 |
-| GPU | P100(무료 쿼터 주30h) | T4/L4/A100… (크레딧 과금) |
-| wandb | Kaggle Secrets wiring | `-e WANDB_API_KEY` 한 줄 |
-| 회수 | `kernels output` | artifact 경로에서 `cp` |
-→ 무료 쿼터로 충분한 단발은 Kaggle, 반복·통합 중요 라운드는 Lightning Job.
+→ 비교표는 [[kaggle_jobs]] "Kaggle vs Lightning Job" 섹션(단일 관리). 요약: **무료 쿼터 단발·torch 외 모델은 Kaggle, wandb-online·반복·통합 라운드는 Lightning**. 둘 다 헤드리스·병렬 가능.
 
 ## 트러블슈팅 — teamspace owner 해석 (해결됨, 2026-06-04)
 - 증상: `lightning run job`/`lightning list studios`/SDK `Teamspace()`/`Studio()` 가

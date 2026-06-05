@@ -1,6 +1,13 @@
 # 설계/계획 — RealMLP (exp_023) Kaggle GPU 실행
 
-> 2026-06-04 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **준비 완료 — headless CLI 실행 대기** (코드·자산·src Dataset push 완료, 스모크 통과) · 관련 [[decisions]] #018(모델링)·#011(증강)·#016(seed)·#015/#017(다양성 판정)
+> 2026-06-04 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **실행 완료·GPU 런북 정착** (exp_023→024→v2 exp_032 채택, n_ens·ep/lr 후속 진행) · 관련 [[decisions]] #018(모델링)·#021(v2 채택)·#016(seed)·#029(TabM park) · 대안 GPU 경로 [[lightning_jobs]]
+
+## 실행 결과·후속 (2026-06-05)
+
+- **exp_023 baseline → exp_024 FE → exp_032 RealMLP v2 채택**(ADR #021): ep64×**n_ens=15** 배깅 + yekenot arch(hidden[512,256,128]·silu·plr_sigma2.33·emb6) + `realmlp_fe_v2`. 개별 OOF 0.951978, 스택 신기록 견인.
+- **n_ens 15→24(exp_046) 채택**(ADR #029): 개별 0.952384(+0.000406), 스택 logistic +0.000031. drop-in 업그레이드(다운사이드 0).
+- **ep/lr 스크린 진행 중**(exp_047-050, n_ens=8 fold0): "싼 배깅" 논지(tuned lr이 저-ep 열쇠) 검증.
+- **GPU 경로**: Kaggle 커널([[kaggle_jobs]]) / Lightning Job([[lightning_jobs]]) 둘 다 사용 — 실행 메커니즘은 각 SSOT 참조.
 
 ## 배경 / 트리거
 
@@ -17,10 +24,8 @@
 
 ## 핵심 결정 (확정)
 
-- **코드 이관**: `src/` 를 **Kaggle Dataset 으로 push** → 노트북에서 `import`. 누수검증된 `encoders.OOFTargetEncoder`·`cv.get_folds`·`features`·`data` 를 **중복 없이 재사용**(self-contained 인라인 대비 동기화 리스크 0).
-- **실행 방식 = headless `kaggle kernels` CLI** — 노트북 **수동 업로드 불필요**. `kernel-metadata.json` + `.ipynb` 를 `kaggle kernels push` 로 올리면 **서버에서 즉시 실행**(GPU·Internet·data source 메타 지정). `status`/`logs` 로 모니터, `output` 으로 산출물 회수. 전 과정 로컬 셸에서 구동.
-- **데이터**: 대회 데이터 = Kaggle competition input, 외부 증강 = 공개 Dataset `aadigupta1601/f1-strategy-dataset-pit-stop-prediction`(=로컬 v4 동일 파일, 검증됨).
-- **RealMLP**: `RealMLP_TD_Classifier(device='cuda', n_cv=1, random_state=42)`, n_epochs=256(메타튜닝 default 유지). Driver=driver_te float, Compound/Race=`cat_col_names`(내부 embedding), 수치 스케일링 내장.
+- **실행 메커니즘**(코드 이관·`kernels push/output`·동시 GPU·slug=title·status API 500·데이터 소스·실전 교훈) → **[[kaggle_jobs]] SSOT 참조**. 본 문서는 RealMLP 모델링 전용.
+- **RealMLP**: `RealMLP_TD_Classifier(device='cuda', n_cv=1, random_state=42)`, n_epochs=256(메타튜닝 default 유지). Driver=driver_te float, Compound/Race=`cat_col_names`(내부 embedding), 수치 스케일링 내장. (v2=ep64·n_ens·yekenot arch — 실행 결과 참조.)
 
 ## 구현·검증 완료 (2026-06-04)
 
@@ -39,39 +44,10 @@
 - 로컬 CPU 스모크(2ep)로 `run()` 전 경로·shape·누수 검증.
 - `src/__init__.py` 존재 — 패키지 import 가능.
 
-## Phase 1 — src 코드 Dataset push (✅ 완료, 코드 변경 시 재실행)
+## Phase 1~3 — 실행·회수 (메커니즘 = [[kaggle_jobs]])
 
-```bash
-bash kaggle/push_src_dataset.sh create               # 최초 (h완료)
-bash kaggle/push_src_dataset.sh version "exp_023 fix" # 코드 변경 후 갱신
-```
-
-→ `https://www.kaggle.com/datasets/buzziru/f1-pit-src`
-
-## Phase 2 — kernel push & 실행 (headless CLI, 실행 대기)
-
-`kaggle/kernel-metadata.json` 핵심: `id=buzziru/realmlp-exp023`, `code_file=realmlp_exp023.ipynb`, `enable_gpu=true`, `enable_internet=true`, `dataset_sources=[buzziru/f1-pit-src, aadigupta1601/…]`, `competition_sources=[playground-series-s6e5]`, `is_private=true`.
-
-```bash
-set -a; . ./.env; set +a
-uv run kaggle kernels push -p kaggle/                 # 업로드 + 서버 실행 시작
-uv run kaggle kernels status  buzziru/realmlp-exp023  # queued→running→complete
-uv run kaggle kernels logs    buzziru/realmlp-exp023  # fold AUC·진행 로그
-```
-
-- 노트북 흐름: `pip install pytabkit` → `src` import + 경로 override(working 하위 분리) → repo `conf/{model/realmlp,features/driver_te}.yaml` 재사용해 `cfg` 구성 → `run(cfg)`(use_wandb=false) → 산출물 검증.
-- 예상 **20~40분**(GPU). 코드 변경 시: Phase 1 `push version` → 다시 `kernels push`(input Dataset 최신 버전 자동 참조).
-
-## Phase 3 — 산출물 회수 + 채택 판정
-
-```bash
-uv run kaggle kernels output buzziru/realmlp-exp023 -p experiments/_kaggle_out/
-# oof/exp_023.csv → experiments/oof/  | submissions/exp_023.csv → experiments/submissions/  | logs/exp_023.json → experiments/logs/
-```
-
-- **단독 OOF AUC** + GBDT(exp_016/019/022)와 **OOF 상관**(낮을수록 다양성↑, 기대 0.92~0.96).
-- **4-way 블렌드(균등 1/4 우선)** OOF vs 현재 3-way 0.951642. 최적가중은 참고용(OOF 과적합 주의).
-- **판정(#015/#017)**: 4-way 블렌드가 3-way 를 이기면 **채택**. 단독 약세 무관.
+- **push/실행/회수 절차**(dataset push → `kernels push` → `output`)는 [[kaggle_jobs]] SSOT. RealMLP 노트북 흐름: `pip install pytabkit` → `src` import + 경로 override → `conf/{model/realmlp,features/realmlp_fe_v2}.yaml` 로 `cfg` 구성 → `run(cfg)`(use_wandb=false) → 검증. 예상 GPU **20~40분**(v2 n_ens 多는 더 김).
+- **RealMLP 채택 판정(#015/#017)**: 단독 OOF + GBDT와 **OOF 상관**(낮을수록 다양성↑) + **스택 게이트**(meta-OOF가 기존 스택 상회). 단독 약세 무관 — 블렌드/스택이 이기면 채택. (실행 결과: exp_032 v2 채택, exp_046 n_ens24 swap — ADR #021/#029.)
 - (채택 시) 마일스톤 제출로 OOF≈LB 갭 재확인(#006).
 
 ## Phase 4 — 문서/로그 갱신
@@ -82,25 +58,18 @@ uv run kaggle kernels output buzziru/realmlp-exp023 -p experiments/_kaggle_out/
 
 ---
 
-## ⚡ Kaggle 실전 교훈 (2026-06-04, exp_023 v1 실행 중 발견 — 이후 GPU 모델 공통)
+## ⚡ Kaggle 실전 교훈 → [[kaggle_jobs]]
 
-1. **Kaggle PyTorch 가 P100(sm_60) 미지원** — 현 Kaggle 이미지 torch 는 `sm_70 75 80 86 90 100 120`만 지원. **P100=sm_60 → CUDA 커널 실행 불가**("no kernel image"), 학습 크래시. `torch.cuda.is_available()`·`get_device_name` 은 True/정상이라 **assert 로 안 걸러짐**(연산에서야 터짐). → **신경망(torch)은 T4(sm_75) 사용**. P100 쓰려면 노트북서 호환 torch 재설치(무겁고 불안정, 비권장).
-2. **GPU 종류 지정 = kernel-metadata `machine_shape`** (또는 `kernels push --accelerator`). 검증된 값: `"nvidiaTeslaT4"`, `"nvidiaTeslaP100"`. 클라이언트는 미검증(서버 검증) — 틀리면 push 에러. `enable_gpu:true` + `machine_shape` 병기.
-3. `**from src import config` 가 Kaggle 서 깨짐** — `sys.path.append` + **빈 `__init__.py`** 조합에서 `src` 가 namespace 패키지로 잡혀 shadowing → `cannot import name 'config' from 'src' (unknown location)`. **수정**: `sys.path.insert(0, …)`(우선순위) + `__init__.py` 비우지 않기(내용 1줄). (빈 파일은 Dataset 에 보존되나 namespace 유발.)
-4. **로그·산출물은 완료 후에만** — `kernels output`/`logs` 는 실행 중 빈 응답. 진행 판단은 `kernels status`(RUNNING/ERROR/COMPLETE). 실패해도 종료 후 `.log` 회수 가능 → 에러 원문 확인.
-5. `**kernels push` = 업로드 + 즉시 실행**(쿼터 소모). **빠른 실패 가드 권장**: 노트북 앞단에 GPU·데이터 assert 를 둬 잘못된 환경이면 setup 직후(초~분) 에러로 끝나 쿼터 절약.
-6. **운영**: `kaggle datasets files` 는 페이지네이션(첫 페이지만). `-r zip` 업로드는 Kaggle 가 폴더로 정상 추출. dataset 코드 변경 → `push version` 후 kernel push(최신 버전 자동 참조).
+(P100 sm_60 미지원·machine_shape·namespace import·로그 완료후·fast-fail·pagination 등 모델 무관 교훈은 [[kaggle_jobs]] SSOT로 이전. RealMLP는 torch 모델이라 **교훈 1[T4 필수] 특히 해당**.)
 
-## 주의 / 리스크
+## 주의 / 리스크 (RealMLP 전용)
 
 - **누수 순서(안전)**: `OOFTargetEncoder.fit_transform_train` 은 fold-train 전 행을 **OOF 인코딩**(내부 5-fold)하므로, RealMLP 내부 `val_fraction=0.2`(체크포인트용) 분할이 train 어디서 잘려도 타깃 누수 없음. 외부 valid fold 는 TE fit 에 미포함 → OOF 정직. (#005/#018)
 - **best-epoch 로깅(CLAUDE.md 원칙 적용 방식)**: RealMLP 는 256 epoch **고정 스케줄** 후 내부 val 로 best checkpoint 선택 — GBDT early-stopping cap 과 의미가 다름(cap 미발화 개념 비해당). 단, best-epoch 가 256(끝)에 붙으면 스케줄 부족 신호일 수 있어 로그 검수. n_epochs 는 메타튜닝 default 라 함부로 늘리지 말 것.
 - **범주형 NaN**: 원본 Compound 66행 → 플레이스홀더 fillna(`_CAT_NAN`) 처리됨.
 - **seed**: fold split seed=42 **동결**(#016), 모델 seed=`random_state=42`. fold 불변.
 - **재현성**: GPU 신경망 비결정 요소(cuDNN) — OOF 미세 변동 감수, 추세 판단.
-- **Kaggle 제약**: GPU 주간 쿼터(통상 30h)·노트북 12h 한도 → 5-fold(~22–35분) 여유. Internet ON 필요(pip). **GPU = T4 고정**(`machine_shape:nvidiaTeslaT4`) — P100 은 torch 미지원(위 교훈 1).
-- **Dataset/kernel 버전 동기화**: src 코드 변경 시 **반드시** `push_src_dataset.sh version` → `kernels push` 순. stale 버전 주의.
-- **headless 제약**: `kernels push` 는 **즉시 실행 + GPU 쿼터 소모**. 증강 assert 실패 등은 `kernels logs` 로 확인 후 재push.
+- **GPU = T4 고정**(torch 모델) — P100 미지원([[kaggle_jobs]] 교훈 1). 쿼터·dataset 버전 동기화·headless 제약 등 운영은 [[kaggle_jobs]].
 
 ## 시간/비용 추정
 
@@ -115,6 +84,6 @@ uv run kaggle kernels output buzziru/realmlp-exp023 -p experiments/_kaggle_out/
 
 ## 차순위 / 확장
 
-- **TabM**(동일 pytabkit API) — RealMLP 채택·인프라 정착 후 동일 kernel 재사용으로 저비용 추가(#018).
-- headless `kernels push/output` 절차는 향후 GPU 모델(재학습·튜닝)에 재사용.
+- **TabM**(동일 pytabkit API) — 시도(exp_044 no-bins full·exp_045 native-cross fold0) → **스택 게이트 실패·park**(ADR #029). 원인 = default 무튜닝 + RealMLP 피처 차용 → 약함(0.9508)+RealMLP 복제(corr 0.9811). **정식 재도전 백로그**(TabM-native 피처 + tabm_k/lr/arch 튜닝, RealMLP 교체 후보) = cat-tune·ep/lr 후 결정.
+- headless `kernels push/output`(+ Lightning Jobs) 절차는 향후 GPU 모델(재학습·튜닝)에 재사용 — CatBoost 튜닝(cat-tune-l4b), RealMLP ep/lr 스크린 등에 적용 중.
 

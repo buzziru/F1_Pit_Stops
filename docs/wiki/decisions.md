@@ -2,6 +2,18 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [029] TabM park (새 NN축 실패) + RealMLP n_ens=24(exp_046) 채택 → stack_v8 OOF 0.954338 — 2026-06-05
+- **결정**: ① **TabM park** (exp_044 no-bins full, exp_045 native-cross fold0 둘 다). non-GBDT 새 decorrelated 축 시도 종료. ② **RealMLP n_ens 15→24(exp_046) 채택** — RealMLP 멤버 교체(exp_032 대체), stack_v8 base.
+- **TabM 근거(게이트 실패)**: exp_044 개별 OOF 0.95083. 5번째 멤버 스택 게이트 = best메타 logistic **0.954338→0.954333(−0.000005)**, equal/rank 악화(−0.00007~−0.0001), nnls만 +0.000063(but nnls는 최저 메타). **best 개선 0 → park.** 원인: TabM corr ↔RealMLP **0.9811**·↔LGBM 0.9816·↔CatBoost 0.9691 = 전부 ~0.98, **RealMLP의 약한 복제**(둘 다 NN+realmlp_fe_v2). fold0서 예측한 corr 0.97 동화(exp_038 0.9676/exp_045 native-cross 0.9741)가 full서 실현. bins는 PLR중복으로 해로움 확정(exp_037 0.9508 < exp_038 0.9520). → **NN 축은 RealMLP가 이미 점유, TabM 추가 무용**(XGB i_* park #025와 동형: 중복축 강화=스택 0).
+- **exp_046 근거**: 개별 OOF 0.951978(n_ens15)→**0.952384(n_ens24, +0.000406)**, 스택 logistic 0.954307→**0.954338(+0.000031)**, 全메타 +, RealMLP coef 0.166→0.199. 엄격 게이트(+0.0001) 미달이나 **같은 모델 drop-in 업그레이드(배깅↑·decorrelation 비용0·다운사이드 없음)** → 채택. seed-avg(#028 +0.000001)보다 전이 큼 = 비지배 멤버(coef 0.20)라 강화 여지 존재.
+- **현 best 스택 = stack_v8** (LGBM exp_034 + XGB exp_043 + RealMLP **exp_046** + CatBoost exp_025) logistic **0.954338**(미제출). 제출 최고 = stack_v7 Private 0.95395. **남은 레버**: CatBoost 튜닝(cat-tune-l4b 진행)·RealMLP ep/lr 스크린(exp_047-050 진행). exp_044/045·exp_032 OOF 대조군 보존.
+- **⚠️ park 단서 = "이 설정에서"이지 TabM 천장 아님 (재도전 백로그)**: 실패 근본 원인 = **비대칭 투자**. RealMLP엔 yekenot arch+n_ens24+ep/lr 쏟고 TabM은 **순수 default TabM_D 무튜닝**(exp_044 params: n_epochs/tabm_k/lr/arch 전부 default) + **RealMLP 피처(realmlp_fe_v2, TE-float) 차용** → 개별 0.9508(튜닝 RealMLP 0.9524보다 낮음) + corr 0.9811(RealMLP 복제). 즉 "약함+중복"은 방치 산물. 대회상 TabM=상위 모델이므로 **정식 재도전**(① TabM-native 피처: raw 수치 PLR + native 범주 임베딩, TE 제거 → RealMLP와 분기 ② tabm_k·lr·epochs·arch 튜닝 ③ RealMLP **교체** 또는 추가를 스택 게이트로) 가치 있음. 단 둘 다 PLR-NN이라 튜닝 후도 corr 높을 위험 → **교체가 현실적**. **결정 보류**: cat-tune·ep/lr 결과 본 뒤 별도 트랙으로 (사용자, 2026-06-05).
+
+## [028] LGBM seed-averaging(K=5) = 스택 중립 — 기록만, 미채택 — 2026-06-05
+- **결정**: exp_034(LGBM 결합FE)를 seed 42–46 5개로 재학습·OOF 평균(`exp_034_seedavg`). 개별 OOF **0.953818→0.953904(+0.000086)** 이나 **스택 swap 게이트 미달**(logistic 0.954307→**0.954308**, +0.000001) → **미채택**, 스택은 단일 exp_034 유지. seed-avg 산출물(`exp_034_seedavg.csv`)은 최종 제출 robustness용으로만 선택 보관.
+- **이유**: LGBM이 스택에서 이미 지배·포화(coef 0.49→0.53로 비중만↑) → seed-avg의 **분산 감소가 새 정보 0** → 메타 점수 전이 안 됨. equal/rank_mean은 오히려 미세 하락. ADR #021/#025의 "개별↑이 스택↑ 아님" 포화 패턴 재현(#002 seed-avg는 최종에만이라는 원칙과도 정합 — 지금 단계 이득 없음).
+- **대안·트레이드오프**: K↑(7,10)도 수렴(2→3→4-seed 한계이득 +0.000018→+0.000003)이라 추가 무의미. 비용: 4코어에서 1 seed≈30–40분(튜닝모델+augment) — ROI 음수. 큰 레버는 여전히 새 모델군(TabM)·RealMLP 튜닝(#021).
+
 ## [027] XGB GBDT-decorrelation 성공 — i_* + TE변수 freq-enc (exp_043) → stack_v7 OOF 0.954307 — 2026-06-05
 - **결정**: XGB 스택 멤버를 exp_028(TE-Driver)→**exp_043**(i_* 상호작용 + Driver·Race_Compound·Race_Year **freq-enc**, `features=xgb_combined_freq3`)로 교체. **stack_v7** 채택(meta-OOF logistic **0.954307**, stack_v6 0.954204 대비 **+0.000103**, kill 게이트 +0.0001 통과). **제출은 추후 결정**(사용자). 파일 `stack_v7_logistic.csv` 생성·미제출.
 - **결과(progression — 사용자 아이디어 검증)**: ADR #025에서 i_* 단독은 동화(park)였으나, **TE 변수를 freq로 분기**하니 통과:
@@ -11,7 +23,8 @@
   - **exp_043 i_*+3var-freq: 0.953288, 0.9928, +0.000103 ✅통과**
 - **메커니즘**: 강도(i_*)는 LGBM과 공유해 동화 압력↑(corr→0.995)이나, **RealMLP가 TE했던 3변수(Driver/Race_Compound/Race_Year)를 freq로 분기**하면 그 축에서 LGBM의 TE-Driver와 다른 split → corr 0.9951→**0.9928** 완화. 개별 강도(0.9533)가 잔여 상관 비용을 압도 → 순+. **분기축 1개(exp_042, +0.000083)→3개(exp_043, +0.000103)**로 게이트 통과 = gbdt_decorrelation_plan **인코딩 분기(L1) + 강도(i_*) 결합**이 핵심.
 - **#025 정련**: "GBDT 강도 FE = 스택 무용"은 **value-FE 단독**에 한함. **value-FE(i_*) + 인코딩 분기(freq on TE vars)를 동시에** 주면 동화를 부분 회피해 성공. 강도와 decorrelation은 **다른 레버로 같이** 줘야 함(같은 i_*만 공유하면 동화).
-- **정직성·트레이드오프**: 절대 이득 작음(+0.000103, 게이트 간신히). LOO 천장(#021 XGB≈0) 밀었으나 안 깨짐. stack_v7 예상 Private ~0.95397(갭 −0.00034 가정 → 목표 0.9540까지 −0.00003). 누적 레버(seed-avg·n_ens, 진행 중) 합산 시 목표 가능. exp_042(+0.000083)·exp_041·exp_035 OOF 는 대조군 보존. 산출물 `conf/features/xgb_combined_freq3.yaml`·`add_xgb_freq_features`.
+- **정직성·트레이드오프**: 절대 이득 작음(+0.000103, 게이트 간신히). LOO 천장(#021 XGB≈0) 밀었으나 안 깨짐. 누적 레버(seed-avg=중립 #028·n_ens 진행 중) 합산 시 목표 가능. exp_042(+0.000083)·exp_041·exp_035 OOF 는 대조군 보존. 산출물 `conf/features/xgb_combined_freq3.yaml`·`add_xgb_freq_features`.
+- **✅ LB 실측(2026-06-05 제출)**: stack_v7_logistic **Public 0.95346 / Private 0.95395** (직전 stack_v6 0.95347/0.95386 대비 Public −0.00001, **Private +0.00009**). **Private 신기록**, 목표 0.9540까지 격차 **+0.00014→+0.00005** 단축. OOF 0.954307 vs Private 0.95395 갭 +0.00036(Public 갭 +0.00085로 더 큼 — Private가 OOF에 더 정합). 죽은 XGB 멤버(coef 0.016)→살아있는 멤버(0.265) 교체가 Private +0.00009로 환산.
 
 ## [026] GBDT FE 채택 원칙 정련 (#010 후속) — "함께 변하는 2-피처 비축정렬 상호작용"만 — 2026-06-05
 - **결정**: GBDT 핸드크래프트 FE 채택 게이트를 정식화(#010·#012 통합). 과거 FE 전패 vs `i_*`(exp_034 +0.00168 LB) 성공의 메커니즘 구분에 근거.

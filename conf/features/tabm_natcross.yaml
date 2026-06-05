@@ -1,0 +1,9 @@
+# TabM decorrelation 스크린 (#027 NN판): realmlp_fe_v2에서 Driver는 TE 유지,
+# Race_Compound·Race_Year cross 2개를 OOF-TE → native 범주 임베딩으로 분기.
+# 목적: RealMLP(전부 TE)와 입력 표현 분기 → 스택 corr↓ (현 TabM↔RealMLP fold0 0.9676).
+# freq-count(GBDT용·타깃신호 손실) 대신 NN-native 임베딩(타깃 학습 보존). 판정=fold0 corr→full 스택 게이트.
+feature_builder: add_realmlp_features
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint_cat, Race_Compound, Race_Year]

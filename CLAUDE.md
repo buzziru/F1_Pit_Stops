@@ -28,7 +28,7 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
   - `eda-explorer` — read-only EDA. 주제별 노트북 생성, 수치 요약만 리턴 (토큰 절약)
   - `feature-smith` — `src/features.py` 피처 구현 + 누수 검증 + OOF 측정 (**동시 1개만**)
   - `kaggle-researcher` — 대회/F1 도메인 리서치
-  - `kaggle-runner` — 헤드리스 Kaggle GPU 실행 (src→Dataset push, `kernels push`/모니터/회수). 로컬 GPU 없을 때 신경망·대형모델용. 블로킹 금지(RUNNING 확인 후 리턴). 교훈 SSOT: `docs/wiki/realmlp_kaggle_plan.md`
+  - `kaggle-runner` — 헤드리스 Kaggle GPU 실행 (src→Dataset push, `kernels push`/모니터/회수). 로컬 GPU 없을 때 신경망·대형모델용. 블로킹 금지(RUNNING 확인 후 리턴). 실행·교훈 SSOT: `docs/wiki/kaggle_jobs.md` (RealMLP 모델링은 `realmlp_kaggle_plan.md`)
 - 학습 루프·실험 비교·최종 판단은 **메인에서 순차** (동일 fold/seed 보장). 에이전트는 격리형 탐색/검증에만.
 - **주요 결정 근거는 `docs/wiki/decisions.md`(ADR-lite) 참조** — 새 결정 시 추가.
 

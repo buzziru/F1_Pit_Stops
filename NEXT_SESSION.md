@@ -12,7 +12,7 @@ _최종 갱신: 2026-06-05 (**stack_v7 OOF 신기록 0.954307**(미제출) — X
 - **🥇 OOF 최고(미제출)**: **stack_v7 logistic 0.954307 / equal 0.954269**. stack_v6(0.954204) 대비 **+0.000103**(exp_043 XGB 스왑, ADR #027). 예상 Private ~0.95397. `stack_v7_logistic.csv`.
 - **🏆 LB 최고(제출됨)**: **stack_v6 logistic** — Public 0.95347 / **Private 0.95386**. meta-OOF 0.954204, OOF≈Private 갭 −0.00034(#006).
 - **stack_v7 멤버(동일 fold seed=42)**: **XGB exp_043**(0.953288, i_*+Driver/Race_Compound/Race_Year **freq-enc**) + **LGBM exp_034**(0.953818, i_*+year/stint-cat+driver_te) + CatBoost exp_025(0.950043, native+year-cat) + RealMLP v2 exp_032(0.951978). logistic coef: LGBM 0.49·XGB 0.27·RealMLP 0.17·Cat 0.10. corr 0.968~0.993.
-- **목표**: Private **0.9540**(3000팀 중 300등≈상위10%). 제출 최고 0.95386 → 격차 **+0.00014**. stack_v7 제출 시 ~0.95397(−0.00003). (`memory/target-score.md`)
+- **목표**: Private **0.95452**(상향, 2026-06-05). 제출 최고 **0.95395**(stack_v7) → 격차 **+0.00057**(실질). 마진 튜닝 부족 → **새 NN 축 필요**([[tabm_improvement_plan]]). (`memory/target-score.md`)
 
 ## 🔜 다음 할 일 (우선순위)
 > 갱신: GBDT decorrelation은 **value-FE 단독 X, value-FE(i_*)+인코딩 분기(freq on TE vars) 동시 = 성공**(exp_043, ADR #027). 강도는 비상관 축에서만 순이득(#025·#021).
