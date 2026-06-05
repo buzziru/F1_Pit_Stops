@@ -9,6 +9,7 @@ EDA(eda.ipynb) 결과를 바탕으로 점진적으로 채운다. 현재는 베�
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from src import config
@@ -62,6 +63,39 @@ def add_realmlp_features(df: pd.DataFrame) -> pd.DataFrame:
     # ③ Stint 5+ 버킷 (v2, #12) — rare 레벨 노이즈 제거용 범주형. min(Stint,5).
     #    extra_categorical_cols=[Year, Stint_cat] 로 활성 (conf/features/realmlp_fe_v2.yaml).
     out["Stint_cat"] = out["Stint"].clip(upper=5).astype("int16")
+    return out
+
+
+def add_tabm_features(df: pd.DataFrame) -> pd.DataFrame:
+    """TabM 전용 FE = add_realmlp_features + floor/bin 이산화 범주 (스택 decorrelation).
+
+    목적: TabM 을 RealMLP 와 **다른 입력 표현**으로 만들어 두 NN 의 OOF 상관을 낮춘다
+    (ADR #019 후보 ② floor-범주화·quantile 비닝, yekenot 8위 실사용; RealMLP 는 미적용).
+    NN 내장 수치임베딩(PLR) 과 별개로 비선형 임계를 명시적 범주로 제공.
+
+    ⚠️ 누수 0: 전부 **per-row 결정적 변환**(고정 클립 + 등폭/floor 비닝). 데이터-fit quantile
+    (KBinsDiscretizer)은 feature_builder 훅이 train/test 를 독립 호출해 경계 불일치/누수가 되므로
+    미사용 — fitted-quantile 은 fold-loop 배선(TE 식)이 필요해 보류. RaceProgress 는 한 레이스에
+    걸쳐 ~균등이라 등폭 200bin ≈ quantile. outlier(SC/피트 랩, max 2400s+)는 고정 클립으로 흡수.
+
+    추가 범주 컬럼(`extra_categorical_cols` 로 활성, conf/features/tabm_fe_floorbin.yaml):
+    bin_progress(~200) · bin_laptime(7) · bin_tyre(~50) · bin_deg(~20).
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        add_realmlp_features + floor/bin 범주가 추가된 복사본.
+    """
+    out = add_realmlp_features(df)
+    rp = out["RaceProgress"].clip(0.0, 1.0)
+    lt = out["LapTime (s)"]
+    deg = out["Cumulative_Degradation"]
+    # 등폭/floor 이산화 (yekenot: RaceProgress 200bin, LapTime 7bin) — 고정 클립으로 outlier 흡수.
+    out["bin_progress"] = np.floor(rp * 200).clip(0, 199).astype("int16")          # ~200 범주
+    out["bin_laptime"] = np.floor((lt.clip(65, 135) - 65) / 10).clip(0, 6).astype("int8")  # 7 범주
+    out["bin_tyre"] = out["TyreLife"].clip(1, 50).astype("int16")                  # ~50 범주 (랩수 이산)
+    out["bin_deg"] = np.floor(deg.clip(-20, 180) / 10).clip(-2, 18).astype("int8")  # ~20 범주
     return out
 
 

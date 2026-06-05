@@ -2,6 +2,12 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [025] GBDT-FE `i_*` 의 XGB·CatBoost 전이 = 스택 무용 — 중복 축 강화는 상관만↑ (park) — 2026-06-05
+- **결정**: LGBM 에서 +0.00168 을 준 `i_*` 상호작용을 XGB(exp_035)·CatBoost(exp_036)에도 적용했으나 **스택 멤버로 미채택(park)**. stack_v6(Private 0.95386) 유지·추가 제출 없음. 사용자 가설("개별 향상 > 상관 비용 → 스택 순+") 검증 결과.
+- **결과(실측)**: **개별은 크게 향상** — XGB 0.951261→**0.953013**(+0.00175), CatBoost 0.950043→**0.951882**(+0.00184), best_iter 전부 수렴. **그러나 스택 swap 게이트 전부 FAIL**(vs stack_v6 logistic 0.954204): XGB 스왑 0.954210(**Δ+0.000006**)·CatBoost 스왑 0.954193(**−0.000011**)·둘 다 0.954177(**−0.000027**). kill criterion(Δ<+0.0001) 미통과.
+- **메커니즘**: `i_*` 가 XGB/CatBoost 를 exp_034(LGBM+i_*)의 **거의 복제**로 만듦 — corr 0.9864→**0.9951**. 개별 강도 이득이 다양성 손실로 정확히 상쇄. equal 블렌드는 멤버가 강해져 소폭↑이나, **우리가 쓰는 logistic(최적·제출 메타)은 이득 0**(중복=새 정보 없음). **LOO 포화(#021, XGB 한계기여 0.000000) 정확히 재현.**
+- **대조·교훈(#021 경계 실증)**: RealMLP v2 는 **비상관 축**(non-GBDT)이라 강도(+0.0033)가 순이득이었으나(ADR #021), **중복 GBDT 는 강도 승 불성립**. "강도 vs 다양성"에서 **강도는 decorrelated 축에서만 순이득**. → 남은 도약은 새 decorrelated 축(`tabm_fe_floorbin`=TabM+floor/bin, RealMLP 와 다른 입력표현으로 corr↓ 노림)에서만. 산출물 `conf/features/{xgb,catboost}_combined.yaml`·exp_035/036 OOF 는 대조군 보존.
+
 ## [024] LGBM 결합FE(exp_034) 채택 — stack_v6 신기록 Private 0.95386 (목표 코앞) — 2026-06-05
 - **결정**: LGBM 스택 멤버를 exp_030(튜닝 base)→**exp_034**(튜닝 + i_*상호작용 + year-cat + stint-cat 결합, `features=lgbm_combined`+driver_te+aug)로 스왑. stack_v6 **logistic·equal 둘 다 제출**.
 - **결과(신기록)**: exp_034 단독 OOF **0.953818**(exp_030 0.952132 대비 **+0.00168**) → stack_v6 meta-OOF **logistic 0.954204 / equal 0.953842**(stack_v5 0.953504 대비 **+0.000700**, 스왑 2x 게이트 통과). **🏁 제출: logistic Public 0.95347 / Private 0.95386(신기록)**, equal 0.95303/0.95354. stack_v5(Private 0.95329) 대비 **+0.00057**. **logistic>equal 3연속**(Private +0.00032 — meta-OOF 순서·LB 일치, #006). OOF≈Private 갭 −0.00034. **목표 Private 0.9540 격차 +0.00014(사실상 도달)**.

@@ -1,0 +1,8 @@
+# [GBDT-FE 결합 검토, ADR #024 후속] CatBoost exp_025(native Driver + year-cat)
+# 위에 i_* 산술 상호작용 5종 추가. 새 레버는 i_* 뿐.
+# ⚠️ stint-cat 제외 — exp_029(year+stint-cat)서 0.949932 < exp_025 0.950043, CatBoost엔 해로움 확인(ADR #020).
+feature_builder: add_realmlp_features
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year]

@@ -18,6 +18,8 @@
   - [`exp_008_011_group1_fe.md`](experiments/exp_008_011_group1_fe.md) — 1번 그룹 파생피처 (기각·revert): #010 법칙 — 트리가 raw 에서 뽑는 정보는 무용
   - [`exp_012_016_external_aug.md`](experiments/exp_012_016_external_aug.md) — 외부 원본 데이터 train 증강 (채택·신기록): fold train 에만 추가, 검증은 대회 only
   - [`exp_019_022_m4_ensemble.md`](experiments/exp_019_022_m4_ensemble.md) — M4 앙상블 XGB/CatBoost/3-way 블렌드 (채택·제출 신기록): GBDT 동질(corr 0.99)→non-GBDT 필요
+  - [`exp_023_030_realmlp_yearcat_tuning.md`](experiments/exp_023_030_realmlp_yearcat_tuning.md) — RealMLP 도입·year/stint-cat·LGBM 튜닝 → stack_v4 (채택, Private 0.95273): non-GBDT가 도약, 범주레버는 모델별 비대칭
+  - [`exp_032_036_realmlp_v2_gbdt_fe.md`](experiments/exp_032_036_realmlp_v2_gbdt_fe.md) — RealMLP v2·GBDT-FE 트랙 → stack_v5/v6 (채택, Private 0.95386): 강도는 decorrelated 축에서만 순+(곱 i_*는 GBDT 1종만 유효)
 - `domain/` — F1 피트전략 등 도메인 지식 메모.
 
 ## 작성 규칙

@@ -1,0 +1,10 @@
+# [TabM decorrelation] realmlp_fe_v2 + floor/bin 이산화 범주 (add_tabm_features).
+# 목적: TabM 을 RealMLP(v2)와 다른 입력 표현으로 → TabM↔RealMLP OOF 상관 ↓ (새 축 확보).
+# floor/bin = ADR #019 후보 ②(yekenot 8위 실사용, RealMLP 미적용). per-row 결정적 → 누수 0.
+# A/B: 이 그룹(B) vs realmlp_fe_v2(A). 게이트 = corr 하락(예 0.95→0.90)이면 개별 비슷해도 채택.
+# model=tabm 전용 (feature_builder 훅·NN 범주 임베딩 가정).
+feature_builder: add_tabm_features
+target_encode_cols: [Driver, Race_Compound, Race_Year]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint_cat, bin_progress, bin_laptime, bin_tyre, bin_deg]

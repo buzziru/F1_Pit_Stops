@@ -1,0 +1,8 @@
+# [GBDT-FE 결합 검토, ADR #024 후속] XGB exp_028(driver_te + year-cat + stint-cat)
+# 위에 i_* 산술 상호작용 5종 추가. 새 레버는 i_* 뿐(year/stint-cat은 exp_028에 이미 있음).
+# 가설: i_* 개별 향상 > exp_034 와의 상관 상승 비용 (강도 승, ADR #021 선례).
+feature_builder: add_realmlp_features
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

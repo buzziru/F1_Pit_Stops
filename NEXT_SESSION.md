@@ -2,11 +2,11 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-05 (**stack_v6 제출 — Private 0.95386 신기록**(logistic). exp_034=LGBM 결합FE(i_*+year-cat+stint-cat) 단독 +0.00168 → 스택 swap. **목표 0.9540 격차 +0.00014(코앞)**. GBDT-FE 트랙 LB검증 완료. divergence 패리티게이트 도입(ADR #023). 다음=TabM or seed avg or 레버 디컨파운딩.)_
+_최종 갱신: 2026-06-05 (**stack_v6 Private 0.95386 신기록 유지**. XGB·CatBoost+i_* = 개별 +0.0017~0.0018 이나 **스택 무용(park, ADR #025)** — i_*가 exp_034 복제(corr 0.995)로 만들어 다양성 손실 상쇄. **TabM+floor/bin builder 빌드 완료**(`add_tabm_features`, decorrelation 노림). 목표 0.9540 격차 +0.00014. 다음=TabM 발사 or seed avg.)_
 
 ## 🟡 진행 중 / 다음 세션 첫 작업
-- **마지막 +0.00014** — 목표 Private 0.9540 코앞. 후보: ① **seed averaging**(#016, 미적용) — 동일 fold·모델 seed만, 분산감소로 안전한 마지막 한 끗 ② **TabM 새 축** ③ exp_034 레버 디컨파운딩(i_*/year-cat/stint-cat 개별 기여 — 현재 결합이라 미상).
-- **(큰 레버) TabM 발사** — 새 decorrelated 축, 스택 ROI 최상. 스캐폴드 완료, Kaggle GPU 발사만 남음(아래 #2).
+- **TabM+floor/bin 발사 (빌드 완료, 발사 결정 대기)** — `add_tabm_features`+`conf/features/tabm_fe_floorbin.yaml` 빌드·피처검증 완료(bin_progress196/laptime7/tyre50/deg21, 누수0, test⊆train). 목적=TabM↔RealMLP **corr↓**(ADR #025가 입증: 도약은 decorrelated 축에서만). Kaggle/Lightning GPU **fold0 A/B**(realmlp_fe_v2 vs +floor/bin) → corr·개별 측정. ⚠️ TabM CPU 비현실적으로 느림(스모크 타임아웃) → GPU 필수.
+- **(대안) seed averaging**(#016) — 목표 +0.00014 코앞, 가장 안전한 마지막 레버.
 
 ## 📈 현재 최고
 - **🏆 LB 최고(제출됨)**: **stack_v6 logistic** — Public 0.95347 / **Private 0.95386**. `experiments/submissions/stack_v6_logistic.csv`. meta-OOF 0.954204, OOF≈Private 갭 **−0.00034**(#006). (equal: Public 0.95303/Private 0.95354 — logistic>equal +0.00032, 3연속.)
@@ -15,12 +15,14 @@ _최종 갱신: 2026-06-05 (**stack_v6 제출 — Private 0.95386 신기록**(lo
 - **목표**: Private **0.9540**(3000팀 중 300등≈상위10%). 현재 제출 **0.95386** → 격차 **+0.00014**(거의 도달). (`memory/target-score.md`)
 
 ## 🔜 다음 할 일 (우선순위)
-> 주의: exp_034가 스택서 지배적(coef 0.70, corr 0.98) → 단일 의존도↑. 추가 도약은 새 decorrelated 축(TabM) 또는 분산감소(seed avg)에서. GBDT-FE는 LGBM 단독 강화로 소진에 가까움.
-1. **seed averaging (#016, 미적용)** — 최종 분산감소. 동일 fold·모델 seed만 변경해 평균. 목표 +0.00014 코앞이라 가장 안전한 마지막 레버. exp_034·exp_032 등 멤버에 적용 후 재스택.
-2. **(큰 레버) TabM 새 모델군 → 재스택** — 스캐폴드·CPU스모크 **완료**(`src/train_tabm.py`+`conf/model/tabm.yaml`). Kaggle GPU 발사만 남음. ★핵심지표=**TabM↔RealMLP rank-corr**(0.90대=청신호, 0.95+=적신호).
-3. **(선택) exp_034 레버 디컨파운딩** — i_*/year-cat/stint-cat 개별 기여(현재 결합이라 미상). stint-cat은 CatBoost서 −였음(#020) → LGBM 단독 해로운지 확인 가치.
-4. **(또는) 마무리** — 목표 도달 시 회고 캡스톤.
+> ADR #025 실증: GBDT-FE는 **소진**(i_*가 XGB/Cat를 exp_034 복제로 만들어 스택 무용). 도약은 **decorrelated 축에서만**(강도는 비상관 축에서만 순이득). exp_034 스택 지배(coef 0.70).
+1. **(큰 레버) TabM+floor/bin → 재스택** — builder 빌드 완료. Kaggle/Lightning GPU **fold0 A/B**(`realmlp_fe_v2`(A) vs `tabm_fe_floorbin`(B)) → **TabM↔RealMLP rank-corr**(0.90대=청신호, 0.95+=적신호) + 개별. corr 하락하면 개별 비슷해도 B 채택(decorrelation 목적). 통과 시 full+재스택. ⚠️ GPU 필수(CPU 비현실적).
+2. **seed averaging (#016, 미적용)** — 분산감소, 가장 안전한 마지막 +. 동일 fold·모델 seed만 변경해 평균(exp_034·exp_032 등) 후 재스택. 목표 +0.00014 코앞.
+3. **(또는) 마무리** — 목표 도달 시 회고 캡스톤.
 - ⚠️ **kill_criterion 선언 후 스파이크**(과몰입 가드). 탐색 전 "이득 X 미만이면 보류" 명시.
+
+### 🅿️ Parked (재시도 금지)
+- **XGB·CatBoost + i_*** (exp_035/036, ADR #025) — 개별 +0.0017~0.0018 이나 스택 swap 게이트 전부 FAIL(Δ≤+0.000006). i_*가 GBDT를 exp_034 복제(corr 0.995)로. conf `{xgb,catboost}_combined.yaml` 보존(대조군).
 
 ## ⚙️ 인프라·운영 (이번 세션 확정)
 - **GPU 실행 = Lightning Job 권장**(`docs/wiki/lightning_jobs.md`): `.venv` 그대로 GPU(노트북 변환 불요). teamspace `ml`·user **`paraise`**·studio `predicting-f1-pit-stops`. CLI `--user paraise`, **wandb 는 `-e WANDB_API_KEY`**(online 정상). artifact=`/teamspace/jobs/<name>/artifacts/`.
@@ -29,6 +31,9 @@ _최종 갱신: 2026-06-05 (**stack_v6 제출 — Private 0.95386 신기록**(lo
 - 스태킹: `uv run python -m src.stack --members a,b,c,d --tag NAME`. 튜닝: `uv run python -m src.tune_lgbm --trials N --patience 15`.
 
 ## ✅ 완료 (2026-06-05 세션)
+- **XGB·CatBoost + i_* = 스택 무용 (park, ADR #025)** — 사용자 가설 검증. 개별 XGB +0.00175·CatBoost +0.00184(큼) 이나 스택 swap 게이트 전부 FAIL(Δ≤+0.000006). i_*가 둘을 exp_034 복제(corr 0.9864→0.9951)로 → 다양성 손실이 강도 상쇄. LOO 포화(#021) 재현. "강도 vs 다양성" 경계 실증: 강도는 비상관 축에서만 순+. exp_035/036 L4 실행.
+- **TabM+floor/bin builder 빌드** — `add_tabm_features`(=add_realmlp_features + floor/bin 이산화 4종) + `conf/features/tabm_fe_floorbin.yaml`. 목적=TabM↔RealMLP corr↓(ADR #025 함의). per-row 결정적·누수0, 피처검증 통과. TabM CPU 비현실적 느림(스모크 타임아웃)→GPU 발사 대기.
+- **wiki 실험 문서 보강** — exp_023~036 누락분 문서화(`docs/wiki/experiments/`).
 - **stack_v6 제출 — Private 0.95386 신기록**(logistic, ADR #024). exp_030→**exp_034**(LGBM 결합FE) 스왑. exp_034 단독 OOF 0.953818(+0.00168 vs exp_030) → 스택 meta-OOF 0.954204(+0.0007). logistic Public 0.95347/Private 0.95386, equal 0.95303/0.95354. stack_v5(0.95329) 대비 +0.00057. **목표 0.9540 격차 +0.00014**. GBDT-FE 트랙 LB검증(exp_034 단독이 구 스택 넘은 게 실신호).
 - **LGBM 결합FE(exp_034) — i_*+year-cat+stint-cat 한 번에**(사용자 선택). LGBM 경로 `extra_categorical_cols` 버그픽스로 year/stint-cat 첫 활성(LGBM 미측정이던 레버). driver_te+aug+튜닝(cap12000) 위에 결합. (3레버 결합이라 개별 기여 미상=백로그.)
 - **코드리뷰 + divergence 패리티게이트**(ADR #023). LGBM 경로(train.py)가 train_common 통합서 제외돼 공통 노브 누락 반복(feature_builder·extra_categorical_cols·max_folds+OOF가드 발견·수정). 통합 대신 `scripts/check_knob_parity.py` 정적 게이트 도입(사용자 선택, ADR 존중·baseline 무위험). 리뷰 브랜치 master 머지.
