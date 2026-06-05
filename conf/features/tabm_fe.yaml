@@ -1,0 +1,9 @@
+# TabM Phase 1 (tabm_improvement_plan): TabM-native 피처 — 범주 전부 native 임베딩.
+# realmlp_fe_v2에서 TE 전부 제거 → Driver·Compound·Race·Year·Race_Compound·Race_Year·Stint_cat
+# 모두 native(TabM이 자기 임베딩 학습) + i_* 유지 + raw 수치(PLR). bins 없음(exp_037 유해).
+# 목적: RealMLP(전부 TE)와 표현 분기(corr↓) + TabM 강화. 변형 (a) full-native(Driver native).
+feature_builder: add_realmlp_features
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint_cat, Race_Compound, Race_Year]
