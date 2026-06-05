@@ -107,7 +107,14 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     fold_scores: list[float] = []
     best_iters: list[int] = []
 
-    for fold, (tr_idx, va_idx) in enumerate(cv.get_folds(y)):
+    # max_folds: 동일 분할의 앞 N fold 만 실행 (스크리닝용, train_common 과 동일 — ADR #022 후속 divergence 보강)
+    folds = cv.get_folds(y)
+    max_folds = cfg.get("max_folds", None)
+    if max_folds:
+        folds = folds[:max_folds]
+        print(f"[max_folds] 동일 분할의 앞 {max_folds}/{config.N_FOLDS} fold 만 실행 (스크리닝, OOF/submission 부분적)")
+
+    for fold, (tr_idx, va_idx) in enumerate(folds):
         x_tr, y_tr = x.iloc[tr_idx], y.iloc[tr_idx]
         x_va = x.iloc[va_idx]
         x_te = x_test
@@ -153,8 +160,12 @@ def run(cfg: DictConfig) -> dict[str, Any]:
         if wandb_run is not None:
             wandb_run.log({"fold": fold, "fold_auc": score, "best_iter": model.best_iteration})
 
-    oof_auc = roc_auc_score(y, oof)
-    print(f"\nOOF AUC = {oof_auc:.6f} | mean={np.mean(fold_scores):.6f} std={np.std(fold_scores):.6f}")
+    if max_folds:
+        oof_auc = float("nan")  # 부분 실행 → 전체 OOF 무의미(미실행 fold=0). fold 점수만 신뢰.
+        print(f"\n[부분 실행 {len(folds)}/{config.N_FOLDS}] fold mean={np.mean(fold_scores):.6f} (OOF AUC 생략)")
+    else:
+        oof_auc = roc_auc_score(y, oof)
+        print(f"\nOOF AUC = {oof_auc:.6f} | mean={np.mean(fold_scores):.6f} std={np.std(fold_scores):.6f}")
 
     # OOF & test 예측 저장
     config.OOF_DIR.mkdir(parents=True, exist_ok=True)
