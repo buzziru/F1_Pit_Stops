@@ -2,9 +2,17 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [022] GBDT-FE A/B 판정 — 곱/비율 상호작용 +0.00274로 트랙 개방 (#010 곱 공백 실증) — 2026-06-05
+- **결정**: LGBM 에 yekenot 산술 상호작용 5종(`i_*`: 곱 `laptime×deg`·비율 `tyre/lapnum` 등)을 **GBDT-FE 트랙으로 개방**. 사용자 제기 "GBDT에 FE 거의 미적용→기본성능 낮은 것 아니냐" 가설(`memory/gbdt-fe-gap-hypothesis.md`)을 이론논쟁 대신 **격리 A/B 실측**으로 해소. 판정 게이트 Δ≥+0.0003.
+- **결과(실측, 동일 LGBM 경로·default 파라미터·augment off·Year numeric·동일 fold seed=42)**: **A**(base 14, 상호작용 없음, `exp_033_gbdt_fe_A`) OOF **0.943936** vs **B**(+`i_*` 5종, `features=gbdt_fe_test`, `exp_033_gbdt_fe_B`) OOF **0.946674** → **Δ +0.002738**, 게이트의 ~9배. **압도적 통과.** 차이는 오직 `i_*` 5종(drop_cols 로 cross·Stint_cat 제거, TE 없음 → 순효과 격리).
+- **메커니즘(#010 개정)**: ADR #010("GBDT 단조변환 불변·native split이 임계 최적화 → 파생 무용")은 **단일 피처 단조변환에만 유효**. 곱/비율은 **두 피처의 상호작용**이라 트리는 axis-aligned split로 근사만 함 → "트리가 raw에서 못 뽑는 정보"에 해당(#010 본문이 명시한 채택 조건). gbdt_fe_test.yaml 주석의 "#010 곱 미검증 공백"이 실증으로 메워짐 → **#010 은 비율/차분 단조변환엔 유지, 곱·비율 상호작용은 예외(채택)**.
+- **선행 버그픽스**: LGBM 경로(`src/train.py`)가 ADR #019 `feature_builder` 훅 미적용이라 이전 세션 A/B 가 무효였음(B에 `i_*` 미주입). `train.py`에 훅 추가(`train_common`과 동일, 기존 LGBM 무영향) → A/B 유효화. ※ 사용자 보고 A=0.945688 은 `exp_013`(augment ON)과 일치하는 교란값이라 본 ADR 은 augment-off clean A(0.943936)로 재측정.
+- **대안·다음**: ① `i_*`를 스택 멤버 LGBM(exp_030 튜닝본)에 적용해 **개별·스택 순효과** 확인(곱이 튜닝·TE와 중복인지 게이트), ② quantile 비닝·floor 범주화 등 #019 후보를 GBDT 에도 A/B, ③ 단 LOO상 GBDT 3종 포화(#021)라 **스택 천장 돌파는 새 축(TabM) 우선** — `i_*`는 LGBM 단독 강화로 한정 평가. 과몰입 가드: 곱 외 후보는 Δ<+0.0003 시 즉시 park.
+
 ## [021] RealMLP v2(exp_032) 채택 — 배깅 중심으로 스택 신기록 OOF 0.953504 — 2026-06-05
 - **결정**: RealMLP v2(`exp_032`)를 스택 RealMLP 멤버로 **채택**(exp_024 대체). 레시피 = ep64 × **n_ens=15**(배깅) + **Stint_cat(5+)** + yekenot arch(hidden[512,256,128]·silu·plr_sigma2.33·embedding_size6), `features=realmlp_fe_v2`+aug, 5-fold. 계획 `realmlp_v2_plan.md`(2단계), ADR #013개정2.
-- **결과**: 개별 OOF 0.948773→**0.951978**(+0.0033, 배깅이 핵심 레버 — 1단계 스크리닝 exp_031 fold0 +0.0013로 선검증). **스택 swap 게이트 통과**: stack_v4(meta-OOF 0.952878)에서 exp_024→exp_032 스왑 → **logistic 0.953504 / equal 0.953275**(Δ **+0.000626**, 게이트 +0.0003의 2배). Kaggle P100 ~60분. stack_v5 생성·**미제출**.
+- **결과**: 개별 OOF 0.948773→**0.951978**(+0.0033, 배깅이 핵심 레버 — 1단계 스크리닝 exp_031 fold0 +0.0013로 선검증). **스택 swap 게이트 통과**: stack_v4(meta-OOF 0.952878)에서 exp_024→exp_032 스왑 → **logistic 0.953504 / equal 0.953275**(Δ **+0.000626**, 게이트 +0.0003의 2배). Kaggle P100 ~60분.
+- **🏁 제출(LB 검증, 2026-06-05)**: stack_v5 **logistic·equal 둘 다 제출**. **logistic Public 0.95272 / Private 0.95329**(신기록), equal Public 0.95244 / Private 0.95304. 기존 최고 stack_v4 균등(Private 0.95273) 대비 **logistic +0.00056**. **이번엔 logistic>equal**(Private +0.00025) — meta-OOF 예측순서(logistic 0.953504>equal 0.953275)와 LB 일치, OOF 신호 신뢰 재확인(#006). OOF≈Private 갭 logistic **−0.00021**. 목표 Private 0.9540까지 격차 +0.00127→**+0.00071**(거의 절반 축소).
 - **메커니즘 주의(트레이드오프)**: v2는 강해지며 **GBDT와 rank-corr 0.90→0.95**(decorrelation 일부 상실 — RealMLP의 스택 가치 원천이 비상관성이었음, LOO 확인). 그럼에도 개별 강도(+0.0033)가 상관 손실을 압도해 순효과 +. "강도 vs 다양성"이 이번엔 강도 승.
 - **부수 실증(스택 구조)**: LOO 한계기여 — XGB **0.000000**·CatBoost 0.000072·LGBM 0.000363·RealMLP 0.000558. → GBDT 3종 포화(corr 0.98~0.99), **XGB/CatBoost 튜닝·추가는 스택에 무용**(#013 "개별 튜닝 후순위" LOO 재확인). 잔여 천장 돌파는 **새 decorrelated 축**(TabM)·검증된 신규 신호로만.
 - **대안·다음**: stack_v5 제출(logistic vs equal 택1, #006), TabM 발사(스캐폴드 완료), LGBM GBDT-FE A/B(곱 상호작용 #010 미검증 공백, 계획). 목표 Private 0.9540(`memory/target-score.md`).

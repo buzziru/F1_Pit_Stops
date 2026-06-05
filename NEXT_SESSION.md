@@ -2,21 +2,21 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-05 (**RealMLP v2(exp_032) 채택 — 스택 신기록 OOF 0.953504**. exp_024→exp_032 스왑 게이트 +0.000626 통과. stack_v5 생성·미제출. 목표=Private 0.9540(300/3000등). LGBM GBDT-FE A/B는 계획.)_
+_최종 갱신: 2026-06-05 (**stack_v5 제출 — Private 0.95329 신기록**(logistic). **LGBM GBDT-FE A/B 완료 — Δ+0.00274로 트랙 개방**(ADR #022). 목표=Private 0.9540, 격차 +0.00071. 다음=i_*를 튜닝 LGBM·스택에 적용 or TabM 발사.)_
 
 ## 🟡 진행 중 / 다음 세션 첫 작업
-- **stack_v5 제출 결정** — exp_032 채택 후 신기록. 파일 `experiments/submissions/stack_v5_{logistic,equal}.csv` 생성됨(**미제출**). meta-OOF logistic **0.953504** / equal **0.953275**. 예상 Private ~0.9534(갭 +0.00013). #006 원칙=robustness 위해 equal 권장이나 이번 logistic 우위 +0.00023로 큼 → 제출 시 택1(또는 둘 다 1회씩).
-- **LGBM GBDT-FE A/B (계획 — 아래 다음 할 일 #1 참조)** — 사용자 제기 "GBDT에 FE 거의 미적용" 가설 검증. **버그픽스 완료**(`src/train.py`에 `feature_builder` 훅 추가, 기존 LGBM 무영향). 설정 `conf/features/gbdt_fe_test.yaml` 준비됨. 미실행.
+- **GBDT-FE 후속 (트랙 개방됨, ADR #022)** — A/B 판정 **B>A Δ+0.002738**(A 0.943936 vs B 0.946674, default 파라미터·augment off). 다음=**`i_*` 5종을 스택 멤버 LGBM(exp_030 튜닝본)에 적용** → 개별·스택 순효과 게이트(곱이 튜닝·TE와 중복인지). 통과 시 스택 재구성. ⚠️ 단 GBDT 3종 LOO 포화(#021)라 스택 천장 돌파는 제한적 — `i_*`는 LGBM 단독 강화로 한정 기대. 곱 외 후보(quantile/floor)는 Δ<+0.0003 시 park.
+- **(큰 레버) TabM 발사** — 새 decorrelated 축, 스택 ROI≳GBDT-FE. 스캐폴드 완료, Kaggle GPU 발사만 남음(아래 #2).
 
 ## 📈 현재 최고
-- **🥇 OOF 최고(미제출)**: **stack_v5** — meta-OOF **logistic 0.953504 / equal 0.953275**. exp_024→**exp_032** 스왑으로 stack_v4(0.952878) 대비 **+0.000626**. 예상 Private ~0.9534.
-- **🏆 LB 최고(제출됨)**: stack_v4 균등 4-way — Public 0.95203 / **Private 0.95273**. `experiments/submissions/stack_v4_equal.csv`. OOF≈Private 갭 +0.00013(#006).
+- **🏆 LB 최고(제출됨)**: **stack_v5 logistic** — Public 0.95272 / **Private 0.95329**. `experiments/submissions/stack_v5_logistic.csv`. meta-OOF 0.953504, OOF≈Private 갭 **−0.00021**(#006). (equal: Public 0.95244/Private 0.95304 — 이번엔 logistic>equal +0.00025.)
+- **🥇 OOF 최고**: stack_v5 meta-OOF **logistic 0.953504 / equal 0.953275**. exp_024→**exp_032** 스왑으로 stack_v4(0.952878) 대비 **+0.000626**.
 - **스택 멤버(동일 fold seed=42)**: LGBM-tuned **exp_030**(0.952132) + XGB year/stint-cat **exp_028**(0.951261) + CatBoost year-cat **exp_025**(0.950043) + **RealMLP v2 exp_032**(0.951978, n_ens15+Stint_cat+arch). meta: logistic 0.953504 / equal 0.953275.
-- **목표**: Private **0.9540**(3000팀 중 300등≈상위10%). 현재 제출 0.95273 → 격차 **+0.00127**(stack_v5 제출 시 ~+0.0006로 축소). 스트레치=레버 총동원 필요(`memory/target-score.md`).
+- **목표**: Private **0.9540**(3000팀 중 300등≈상위10%). 현재 제출 **0.95329** → 격차 **+0.00071**(절반 축소). 스트레치=레버 총동원 필요(`memory/target-score.md`).
 
 ## 🔜 다음 할 일 (우선순위)
-> 스택 decorrelation 분석(이번 세션): GBDT 3종 rank-corr 0.98~0.99(포화), RealMLP만 비상관 축. **LOO 실증**: XGB 한계기여 0.000000·Cat 0.000072 → **GBDT 튜닝·추가는 스택에 무용**. 도약은 새 decorrelated 축 또는 검증된 신규 신호로만.
-1. **LGBM GBDT-FE A/B (계획·미실행)** — `base+year-cat`(A) vs `+상호작용5종`(B, `features=gbdt_fe_test`), 동일 fold/파라미터. **버그픽스 완료**(train.py 훅). 판정: **Δ≥+0.0003→GBDT FE 트랙 개방**(곱 상호작용은 #010 단순차분과 달라 미검증 공백), 중립→#010 재확인·종료. 근거: `memory/gbdt-fe-gap-hypothesis.md`.
+> 스택 decorrelation 분석(이전 세션): GBDT 3종 rank-corr 0.98~0.99(포화), RealMLP만 비상관 축. **LOO 실증**: XGB 한계기여 0.000000·Cat 0.000072 → **GBDT 튜닝·추가는 스택에 무용**. 도약은 새 decorrelated 축 또는 검증된 신규 신호로만.
+1. **GBDT-FE `i_*` → 튜닝 LGBM·스택 적용 (트랙 개방됨, ADR #022 완료)** — A/B 판정 **Δ+0.002738**(default LGBM, A 0.943936 vs B 0.946674) → 곱/비율 상호작용이 #010 곱 공백을 메움(채택). 다음=`i_*`를 exp_030 튜닝본+TE에 얹어 개별 OOF·스택 swap 게이트(곱이 튜닝/TE와 중복인지). ⚠️ 스택 천장(GBDT 포화)상 단독 강화 위주 기대. 곱 외 후보(quantile/floor)는 Δ<+0.0003 시 park.
 2. **(큰 레버) TabM 새 모델군 → 재스택** — 스캐폴드·CPU스모크 **완료**(`src/train_tabm.py`+`conf/model/tabm.yaml`). Kaggle GPU 발사만 남음(노트북=`kaggle/v2_full` 패턴 복제). ★핵심지표=**TabM↔RealMLP rank-corr**(0.90대=청신호, 0.95+=적신호). 스택 ROI≳GBDT(새 축).
 3. **seed averaging**(#016, 미적용) — 최종 분산감소. 동일 fold·모델 seed만.
 4. **(또는) 마무리** — stack_v5 제출 후 회고 캡스톤.
@@ -29,6 +29,8 @@ _최종 갱신: 2026-06-05 (**RealMLP v2(exp_032) 채택 — 스택 신기록 OO
 - 스태킹: `uv run python -m src.stack --members a,b,c,d --tag NAME`. 튜닝: `uv run python -m src.tune_lgbm --trials N --patience 15`.
 
 ## ✅ 완료 (2026-06-05 세션)
+- **stack_v5 제출 — Private 0.95329 신기록**(logistic, ADR #021 제출 라인). logistic Public 0.95272/Private 0.95329, equal 0.95244/0.95304. stack_v4(0.95273) 대비 +0.00056. 이번엔 logistic>equal, meta-OOF 예측순서와 LB 일치(#006 재확인). 목표 격차 +0.00127→+0.00071.
+- **LGBM GBDT-FE A/B 완료 — 트랙 개방** (ADR #022). 이전 세션 B 에러=`train.py` 훅 미적용 버그(픽스 후 정상 완주). 격리 A/B(default·augment off): A(base) 0.943936 vs B(+i_* 5종) 0.946674 = **Δ+0.002738**, 게이트 9배 통과. 곱/비율 상호작용이 #010 곱 공백 실증. `gbdt-fe-gap-hypothesis` 가설 검증됨.
 - **RealMLP v2(exp_032) 채택 — 스택 신기록 OOF 0.953504** (ADR #021). 1단계 스크리닝(exp_031 fold0 +0.0013) 통과→2단계 본 run(ep64×n_ens15+Stint_cat+arch, Kaggle P100 **~60분**). 개별 0.948773→**0.951978**(+0.0033). 스왑 게이트 meta-OOF **+0.000626**(2x 게이트). RealMLP가 강해지며 GBDT 상관 0.90→0.95(다양성 일부 손실)이나 강도가 압도해 순+.
 - **스택 decorrelation 분석 + LOO 실증** — GBDT 3종 포화(corr 0.98~0.99), RealMLP만 비상관축. LOO 한계기여: XGB **0.000000**·Cat 0.000072 → **XGB/CatBoost 튜닝은 스택 무용**(사용자 질문 답). 천장=피처-정보 천장.
 - **TabM 스캐폴드** — `src/train_tabm.py`+`conf/model/tabm.yaml`, CPU 스모크 통과(배선 검증). GPU 발사 대기.
