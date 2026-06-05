@@ -2,27 +2,29 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT 는 GitHub Issues, 상시 가이드는 `CLAUDE.md`, 지식은 `docs/wiki/`.
 
-_최종 갱신: 2026-06-05 (**stack_v6 Private 0.95386 신기록 유지**. XGB·CatBoost+i_* = 개별 +0.0017~0.0018 이나 **스택 무용(park, ADR #025)** — i_*가 exp_034 복제(corr 0.995)로 만들어 다양성 손실 상쇄. **TabM+floor/bin builder 빌드 완료**(`add_tabm_features`, decorrelation 노림). 목표 0.9540 격차 +0.00014. 다음=TabM 발사 or seed avg.)_
+_최종 갱신: 2026-06-05 (**stack_v7 OOF 신기록 0.954307**(미제출) — XGB exp_028→**exp_043**(i_*+TE변수 freq-enc) 채택, ADR #027. 사용자 GBDT-decorrelation 아이디어 성공(스택 +0.000103, 게이트 통과). 제출 최고는 여전히 stack_v6 Private 0.95386. **제출 보류**. 진행 중=seed-avg·n_ens v2. TabM no-bins=bins가 깎음 확정(+0.00114) but full 미발사.)_
 
 ## 🟡 진행 중 / 다음 세션 첫 작업
-- **TabM+floor/bin 발사 (빌드 완료, 발사 결정 대기)** — `add_tabm_features`+`conf/features/tabm_fe_floorbin.yaml` 빌드·피처검증 완료(bin_progress196/laptime7/tyre50/deg21, 누수0, test⊆train). 목적=TabM↔RealMLP **corr↓**(ADR #025가 입증: 도약은 decorrelated 축에서만). Kaggle/Lightning GPU **fold0 A/B**(realmlp_fe_v2 vs +floor/bin) → corr·개별 측정. ⚠️ TabM CPU 비현실적으로 느림(스모크 타임아웃) → GPU 필수.
-- **(대안) seed averaging**(#016) — 목표 +0.00014 코앞, 가장 안전한 마지막 레버.
+- **제출 결정 (보류 중)** — stack_v7(meta-OOF 0.954307, 예상 Private ~0.95397) **미제출**. ⓐ seed-avg·n_ens 결과 누적 후 1회 제출(권장, 목표 0.9540 넘을 가능성·쿼터 절약) ⓑ stack_v7 지금 제출(exp_043 LB 확정).
+- **진행 중 백그라운드**: LGBM seed-avg(`b7aksv6et`, ~4/5) · RealMLP n_ens 20/24 v2(`bfaff7zws`, 1차 노트북버그→재발사). 완료 시 stack_v7에 누적 검토.
 
 ## 📈 현재 최고
-- **🏆 LB 최고(제출됨)**: **stack_v6 logistic** — Public 0.95347 / **Private 0.95386**. `experiments/submissions/stack_v6_logistic.csv`. meta-OOF 0.954204, OOF≈Private 갭 **−0.00034**(#006). (equal: Public 0.95303/Private 0.95354 — logistic>equal +0.00032, 3연속.)
-- **🥇 OOF 최고**: stack_v6 meta-OOF **logistic 0.954204 / equal 0.953842**. exp_030→**exp_034** 스왑으로 stack_v5(0.953504) 대비 **+0.000700**.
-- **스택 멤버(동일 fold seed=42)**: **LGBM 결합FE exp_034**(0.953818, i_*+year-cat+stint-cat+튜닝+aug) + XGB year/stint-cat **exp_028**(0.951261) + CatBoost year-cat **exp_025**(0.950043) + **RealMLP v2 exp_032**(0.951978). logistic coef: exp_034 0.70·RealMLP 0.19·Cat 0.12·XGB 0.02(exp_034 지배적, corr 0.977~0.986).
-- **목표**: Private **0.9540**(3000팀 중 300등≈상위10%). 현재 제출 **0.95386** → 격차 **+0.00014**(거의 도달). (`memory/target-score.md`)
+- **🥇 OOF 최고(미제출)**: **stack_v7 logistic 0.954307 / equal 0.954269**. stack_v6(0.954204) 대비 **+0.000103**(exp_043 XGB 스왑, ADR #027). 예상 Private ~0.95397. `stack_v7_logistic.csv`.
+- **🏆 LB 최고(제출됨)**: **stack_v6 logistic** — Public 0.95347 / **Private 0.95386**. meta-OOF 0.954204, OOF≈Private 갭 −0.00034(#006).
+- **stack_v7 멤버(동일 fold seed=42)**: **XGB exp_043**(0.953288, i_*+Driver/Race_Compound/Race_Year **freq-enc**) + **LGBM exp_034**(0.953818, i_*+year/stint-cat+driver_te) + CatBoost exp_025(0.950043, native+year-cat) + RealMLP v2 exp_032(0.951978). logistic coef: LGBM 0.49·XGB 0.27·RealMLP 0.17·Cat 0.10. corr 0.968~0.993.
+- **목표**: Private **0.9540**(3000팀 중 300등≈상위10%). 제출 최고 0.95386 → 격차 **+0.00014**. stack_v7 제출 시 ~0.95397(−0.00003). (`memory/target-score.md`)
 
 ## 🔜 다음 할 일 (우선순위)
-> ADR #025 실증: GBDT-FE는 **소진**(i_*가 XGB/Cat를 exp_034 복제로 만들어 스택 무용). 도약은 **decorrelated 축에서만**(강도는 비상관 축에서만 순이득). exp_034 스택 지배(coef 0.70).
-1. **(큰 레버) TabM+floor/bin → 재스택** — builder 빌드 완료. Kaggle/Lightning GPU **fold0 A/B**(`realmlp_fe_v2`(A) vs `tabm_fe_floorbin`(B)) → **TabM↔RealMLP rank-corr**(0.90대=청신호, 0.95+=적신호) + 개별. corr 하락하면 개별 비슷해도 B 채택(decorrelation 목적). 통과 시 full+재스택. ⚠️ GPU 필수(CPU 비현실적).
-2. **seed averaging (#016, 미적용)** — 분산감소, 가장 안전한 마지막 +. 동일 fold·모델 seed만 변경해 평균(exp_034·exp_032 등) 후 재스택. 목표 +0.00014 코앞.
-3. **(또는) 마무리** — 목표 도달 시 회고 캡스톤.
+> 갱신: GBDT decorrelation은 **value-FE 단독 X, value-FE(i_*)+인코딩 분기(freq on TE vars) 동시 = 성공**(exp_043, ADR #027). 강도는 비상관 축에서만 순이득(#025·#021).
+1. **제출 결정** — stack_v7(0.954307) 미제출. seed-avg·n_ens 누적 후 결합 스택 1회 제출(권장) or 지금 제출.
+2. **누적 레버 합산** — seed-avg(exp_034 분산감소, 진행 중)·n_ens(RealMLP 강화, v2 진행 중) 완료 시 stack_v7에 합쳐 결합 스택 → 목표 0.9540 돌파 시도.
+3. **(선택) GBDT decorr 연장** — CatBoost도 freq-enc(L1을 Cat에)? L2 field_pit_rate? 단 천장 낮음(보조). gbdt_decorrelation_plan.
+4. **(또는) 마무리** — 목표 도달 시 회고 캡스톤.
 - ⚠️ **kill_criterion 선언 후 스파이크**(과몰입 가드). 탐색 전 "이득 X 미만이면 보류" 명시.
 
-### 🅿️ Parked (재시도 금지)
-- **XGB·CatBoost + i_*** (exp_035/036, ADR #025) — 개별 +0.0017~0.0018 이나 스택 swap 게이트 전부 FAIL(Δ≤+0.000006). i_*가 GBDT를 exp_034 복제(corr 0.995)로. conf `{xgb,catboost}_combined.yaml` 보존(대조군).
+### 🅿️ Parked / 결론 (재시도 금지)
+- **XGB·CatBoost + i_* 단독** (exp_035/036, ADR #025) — 동화로 park. **단 XGB는 i_*+freq-enc로 부활(exp_043 채택, ADR #027)** — value-FE만 공유하면 동화, 인코딩 분기 병행하면 성공.
+- **TabM** (exp_037/038 회고): floor/bin은 성능 깎음(no-bins +0.00114, exp_038 fold0). no-bins(realmlp_fe_v2)는 RealMLP-유사(corr 0.9676) → 새 축 가치 제한적. **full 미발사**(notebook `tabm_exp044_nobins_full.ipynb` 빌드만). 발사 시 fold0서 RealMLP 대비 약하고 corr 높음 인지하고 결정.
 
 ## ⚙️ 인프라·운영 (이번 세션 확정)
 - **GPU 실행 = Lightning Job 권장**(`docs/wiki/lightning_jobs.md`): `.venv` 그대로 GPU(노트북 변환 불요). teamspace `ml`·user **`paraise`**·studio `predicting-f1-pit-stops`. CLI `--user paraise`, **wandb 는 `-e WANDB_API_KEY`**(online 정상). artifact=`/teamspace/jobs/<name>/artifacts/`.
@@ -31,7 +33,11 @@ _최종 갱신: 2026-06-05 (**stack_v6 Private 0.95386 신기록 유지**. XGB·
 - 스태킹: `uv run python -m src.stack --members a,b,c,d --tag NAME`. 튜닝: `uv run python -m src.tune_lgbm --trials N --patience 15`.
 
 ## ✅ 완료 (2026-06-05 세션)
-- **XGB·CatBoost + i_* = 스택 무용 (park, ADR #025)** — 사용자 가설 검증. 개별 XGB +0.00175·CatBoost +0.00184(큼) 이나 스택 swap 게이트 전부 FAIL(Δ≤+0.000006). i_*가 둘을 exp_034 복제(corr 0.9864→0.9951)로 → 다양성 손실이 강도 상쇄. LOO 포화(#021) 재현. "강도 vs 다양성" 경계 실증: 강도는 비상관 축에서만 순+. exp_035/036 L4 실행.
+- **XGB GBDT-decorrelation 성공 → stack_v7 OOF 0.954307 (ADR #027)** — 사용자 아이디어("TE 변수에 freq-enc"). exp_043 = i_* + Driver/Race_Compound/Race_Year **freq-enc**, 개별 0.953288·corr↔LGBM 0.9928. exp_028→exp_043 스왑 meta-OOF **+0.000103**(게이트 통과). progression: i_*+TE 동화(+0.000006)→Driver-freq(+0.000020)→i_*+Driver-freq(+0.000083)→**i_*+3var-freq(+0.000103)**. #025 정련(value-FE+인코딩분기 동시=성공). **미제출**.
+- **TabM no-bins 진단(exp_038 fold0)** — bins 제거 +0.00114(bins가 깎음 확정, 사용자 가설). no-bins corr↔RealMLP 0.9676(RealMLP-유사). full 미발사.
+- **seed averaging 구현(ADR #016)** — `seed` 노브 분리(fold 동결), 전 트레이너+패리티게이트. LGBM K=5 진행 중.
+- **GBDT decorrelation 계획**(`gbdt_decorrelation_plan.md`) + ADR #026(GBDT FE 원칙).
+- **XGB·CatBoost + i_* 단독 = 스택 무용 (park, ADR #025)** — 사용자 가설 검증. 개별 XGB +0.00175·CatBoost +0.00184(큼) 이나 스택 swap 게이트 전부 FAIL(Δ≤+0.000006). i_*가 둘을 exp_034 복제(corr 0.9864→0.9951)로 → 다양성 손실이 강도 상쇄. LOO 포화(#021) 재현. "강도 vs 다양성" 경계 실증: 강도는 비상관 축에서만 순+. exp_035/036 L4 실행.
 - **TabM+floor/bin builder 빌드** — `add_tabm_features`(=add_realmlp_features + floor/bin 이산화 4종) + `conf/features/tabm_fe_floorbin.yaml`. 목적=TabM↔RealMLP corr↓(ADR #025 함의). per-row 결정적·누수0, 피처검증 통과. TabM CPU 비현실적 느림(스모크 타임아웃)→GPU 발사 대기.
 - **wiki 실험 문서 보강** — exp_023~036 누락분 문서화(`docs/wiki/experiments/`).
 - **stack_v6 제출 — Private 0.95386 신기록**(logistic, ADR #024). exp_030→**exp_034**(LGBM 결합FE) 스왑. exp_034 단독 OOF 0.953818(+0.00168 vs exp_030) → 스택 meta-OOF 0.954204(+0.0007). logistic Public 0.95347/Private 0.95386, equal 0.95303/0.95354. stack_v5(0.95329) 대비 +0.00057. **목표 0.9540 격차 +0.00014**. GBDT-FE 트랙 LB검증(exp_034 단독이 구 스택 넘은 게 실신호).

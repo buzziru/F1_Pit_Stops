@@ -2,6 +2,17 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [027] XGB GBDT-decorrelation 성공 — i_* + TE변수 freq-enc (exp_043) → stack_v7 OOF 0.954307 — 2026-06-05
+- **결정**: XGB 스택 멤버를 exp_028(TE-Driver)→**exp_043**(i_* 상호작용 + Driver·Race_Compound·Race_Year **freq-enc**, `features=xgb_combined_freq3`)로 교체. **stack_v7** 채택(meta-OOF logistic **0.954307**, stack_v6 0.954204 대비 **+0.000103**, kill 게이트 +0.0001 통과). **제출은 추후 결정**(사용자). 파일 `stack_v7_logistic.csv` 생성·미제출.
+- **결과(progression — 사용자 아이디어 검증)**: ADR #025에서 i_* 단독은 동화(park)였으나, **TE 변수를 freq로 분기**하니 통과:
+  - exp_035 i_*+TE: 개별 0.953013, corr↔LGBM 0.9951, 스택 **+0.000006**(동화)
+  - exp_041 Driver-freq(i_* 없음): 0.951431, 0.9809, **+0.000020**
+  - exp_042 i_*+Driver-freq: 0.953215, 0.9894, **+0.000083**(근소미달)
+  - **exp_043 i_*+3var-freq: 0.953288, 0.9928, +0.000103 ✅통과**
+- **메커니즘**: 강도(i_*)는 LGBM과 공유해 동화 압력↑(corr→0.995)이나, **RealMLP가 TE했던 3변수(Driver/Race_Compound/Race_Year)를 freq로 분기**하면 그 축에서 LGBM의 TE-Driver와 다른 split → corr 0.9951→**0.9928** 완화. 개별 강도(0.9533)가 잔여 상관 비용을 압도 → 순+. **분기축 1개(exp_042, +0.000083)→3개(exp_043, +0.000103)**로 게이트 통과 = gbdt_decorrelation_plan **인코딩 분기(L1) + 강도(i_*) 결합**이 핵심.
+- **#025 정련**: "GBDT 강도 FE = 스택 무용"은 **value-FE 단독**에 한함. **value-FE(i_*) + 인코딩 분기(freq on TE vars)를 동시에** 주면 동화를 부분 회피해 성공. 강도와 decorrelation은 **다른 레버로 같이** 줘야 함(같은 i_*만 공유하면 동화).
+- **정직성·트레이드오프**: 절대 이득 작음(+0.000103, 게이트 간신히). LOO 천장(#021 XGB≈0) 밀었으나 안 깨짐. stack_v7 예상 Private ~0.95397(갭 −0.00034 가정 → 목표 0.9540까지 −0.00003). 누적 레버(seed-avg·n_ens, 진행 중) 합산 시 목표 가능. exp_042(+0.000083)·exp_041·exp_035 OOF 는 대조군 보존. 산출물 `conf/features/xgb_combined_freq3.yaml`·`add_xgb_freq_features`.
+
 ## [026] GBDT FE 채택 원칙 정련 (#010 후속) — "함께 변하는 2-피처 비축정렬 상호작용"만 — 2026-06-05
 - **결정**: GBDT 핸드크래프트 FE 채택 게이트를 정식화(#010·#012 통합). 과거 FE 전패 vs `i_*`(exp_034 +0.00168 LB) 성공의 메커니즘 구분에 근거.
   - **채택 후보 = 2개 이상 "함께 변하는" 피처의 곱/비율(비축정렬 상호작용)** — axis-aligned 트리가 다단 staircase split로만 근사하는 것.
