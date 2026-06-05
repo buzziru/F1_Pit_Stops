@@ -85,6 +85,7 @@ data/           # train/test/sample_submission  ← git 제외
 - **타입힌트 필수**, **Google 스타일 docstring**, 함수당 ~50줄 권장
 - 하드코딩 금지 — 경로/시드/컬럼은 `src/config.py` 참조
 - **재현성**: 모든 실험은 `seed_everything()` + 커밋 해시 로깅(`utils.log_experiment` 자동 기록)
+- **LGBM 경로 패리티 (필수)**: `src/train.py`(LGBM)는 ADR(회귀 안전)대로 `train_common` 과 통합 안 함 → 공통 노브가 LGBM 에 누락되는 divergence 버그 반복(feature_builder·extra_categorical_cols·max_folds, ADR #023). `train_common.py`/`train.py` 수정 시 **`uv run python scripts/check_knob_parity.py`** 로 노브 패리티 PASS 확인.
 
 ## 실행 예시
 ```bash

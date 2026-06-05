@@ -2,6 +2,13 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [023] LGBM 경로 divergence — 통합 대신 노브 패리티 게이트로 재발 차단 — 2026-06-05
+- **결정**: 분리된 LGBM 경로(`src/train.py`)와 공유 골격(`src/train_common.py`)의 **divergence 버그 재발을, 경로 통합이 아니라 정적 패리티 게이트**(`scripts/check_knob_parity.py`)로 막는다. train_common 이 읽는 cross-model 노브(`cfg.features.*`·`cfg.augment.*`·`max_folds`·`kill_criterion`)를 `src/train.py` 도 전부 읽는지 검사 → 누락 시 exit 1.
+- **근본 원인**: 리팩토링 때 LGBM baseline 오염 방지(회귀 안전)로 `train.py` 를 `train_common` 통합에서 의도적으로 제외(train_common docstring "LGBM 통합 안 함"). 그 대가로 **`run_oof_cv` 에 추가되는 공통 훅/노브가 `train.py` 에 손으로 미러링돼야 하는데 누락이 반복**됨: ① `feature_builder`(ADR #019) ② `extra_categorical_cols` ③ `max_folds` 슬라이싱 + 부분실행 OOF NaN 가드(이상 본 라운드 코드리뷰서 발견·수정). 입력 동등성 게이트(`check_fold_inputs.py`)는 x_tr/x_va/x_te/w_tr 만 봐서 **control-flow 노브를 못 잡는 공백**이 있었음.
+- **증상(실측)**: `max_folds=N` 스크리닝이 `train.py` 에선 조용히 무시돼 full 5-fold 실행(smoke·exp_033 B 에서 `max_folds=1` 이 5-fold 로 돈 것 확인). 잘못된 결과는 아니나 ~5x 낭비 + 스크리닝 프로토콜 위반 인지 못함.
+- **대안·트레이드오프**: **통합**(lgb `prepare`/`fit_predict` 어댑터로 `run_oof_cv` 흡수, XGB/Cat/RealMLP 와 동일)은 divergence 를 영구 제거하나 **ADR "LGBM 통합 안 함" 번복 + exp_030/제출된 stack(Private 0.95329) OOF 바이트 동일성 입증 부담**(`check_fold_inputs` 통과 시 무위험이나 실패 시 스택 재학습). 사용자 결정(2026-06-05) = **패리티 게이트**(저위험·ADR 존중, 재발만 차단). 단점: 중복 골격은 남음 — 통합은 후순위 백로그.
+- **운영**: `train_common`/`train.py` 수정 시 `uv run python scripts/check_knob_parity.py` 실행(PASS 확인). 정당한 LGBM-무관 노브는 스크립트 `EXEMPT` 에 사유와 함께 등록. 네거티브 테스트로 게이트가 max_folds 누락을 검출함 확인.
+
 ## [022] GBDT-FE A/B 판정 — 곱/비율 상호작용 +0.00274로 트랙 개방 (#010 곱 공백 실증) — 2026-06-05
 - **결정**: LGBM 에 yekenot 산술 상호작용 5종(`i_*`: 곱 `laptime×deg`·비율 `tyre/lapnum` 등)을 **GBDT-FE 트랙으로 개방**. 사용자 제기 "GBDT에 FE 거의 미적용→기본성능 낮은 것 아니냐" 가설(`memory/gbdt-fe-gap-hypothesis.md`)을 이론논쟁 대신 **격리 A/B 실측**으로 해소. 판정 게이트 Δ≥+0.0003.
 - **결과(실측, 동일 LGBM 경로·default 파라미터·augment off·Year numeric·동일 fold seed=42)**: **A**(base 14, 상호작용 없음, `exp_033_gbdt_fe_A`) OOF **0.943936** vs **B**(+`i_*` 5종, `features=gbdt_fe_test`, `exp_033_gbdt_fe_B`) OOF **0.946674** → **Δ +0.002738**, 게이트의 ~9배. **압도적 통과.** 차이는 오직 `i_*` 5종(drop_cols 로 cross·Stint_cat 제거, TE 없음 → 순효과 격리).
