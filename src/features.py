@@ -99,6 +99,29 @@ def add_tabm_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_driver_freq(df: pd.DataFrame) -> pd.DataFrame:
+    """Driver frequency(count) encoding — TE·native 와 다른 표현으로 GBDT decorrelation
+    (gbdt_decorrelation_plan L1).
+
+    누수 없음: 타깃 미사용 · **대회 train 카운트로 전역 1회** 산출해 train/test 동일 맵 적용
+    (feature_builder 가 df 를 따로 호출해도 맵이 load_train 고정이라 일관). 미등장 Driver→0.
+    드라이버 등장빈도(정규 vs 간헐 출전)는 driver_te(피트 성향)와 **다른 신호축** → XGB 가
+    LGBM 의 TE-Driver 와 다른 split 을 타게 함. 사용 시 native Driver 는 drop_cols 로 제거.
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        Driver_freq(int) 컬럼이 추가된 복사본.
+    """
+    from src import data  # 지연 임포트(순환 회피)
+
+    out = df.copy()
+    freq = data.load_train()["Driver"].value_counts()
+    out["Driver_freq"] = out["Driver"].map(freq).fillna(0).astype("int32")
+    return out
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """모델에 투입할 피처 컬럼 목록을 반환한다 (id, target 제외).
 

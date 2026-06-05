@@ -1,0 +1,9 @@
+# [GBDT decorrelation L1] XGB Driver 인코딩 분기 = frequency(count) encoding.
+# exp_028(driver_te + year/stint-cat)에서 Driver TE→freq 로만 교체(나머지 동일) → LGBM(TE)과
+# decorrelation 노림. 판정 = 스택 swap + LGBM corr 하락(개별 OOF 아님, gbdt_decorrelation_plan).
+# native Driver 는 drop, Driver_freq(numeric) 로 대체. i_* 미포함(강도 FE=동화, #025).
+feature_builder: add_driver_freq
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Driver]
+extra_categorical_cols: [Year, Stint]
