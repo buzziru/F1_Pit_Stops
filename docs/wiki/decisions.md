@@ -17,6 +17,7 @@
 - **결과(실측)**: **개별은 크게 향상** — XGB 0.951261→**0.953013**(+0.00175), CatBoost 0.950043→**0.951882**(+0.00184), best_iter 전부 수렴. **그러나 스택 swap 게이트 전부 FAIL**(vs stack_v6 logistic 0.954204): XGB 스왑 0.954210(**Δ+0.000006**)·CatBoost 스왑 0.954193(**−0.000011**)·둘 다 0.954177(**−0.000027**). kill criterion(Δ<+0.0001) 미통과.
 - **메커니즘**: `i_*` 가 XGB/CatBoost 를 exp_034(LGBM+i_*)의 **거의 복제**로 만듦 — corr 0.9864→**0.9951**. 개별 강도 이득이 다양성 손실로 정확히 상쇄. equal 블렌드는 멤버가 강해져 소폭↑이나, **우리가 쓰는 logistic(최적·제출 메타)은 이득 0**(중복=새 정보 없음). **LOO 포화(#021, XGB 한계기여 0.000000) 정확히 재현.**
 - **대조·교훈(#021 경계 실증)**: RealMLP v2 는 **비상관 축**(non-GBDT)이라 강도(+0.0033)가 순이득이었으나(ADR #021), **중복 GBDT 는 강도 승 불성립**. "강도 vs 다양성"에서 **강도는 decorrelated 축에서만 순이득**. → 남은 도약은 새 decorrelated 축(`tabm_fe_floorbin`=TabM+floor/bin, RealMLP 와 다른 입력표현으로 corr↓ 노림)에서만. 산출물 `conf/features/{xgb,catboost}_combined.yaml`·exp_035/036 OOF 는 대조군 보존.
+- **후속 계획**: 동화를 피해 XGB가 스택서 efficiency 내려면 강도 아닌 **decorrelation FE**가 필요 → `docs/wiki/gbdt_decorrelation_plan.md`(L1 Driver freq-enc / L2 field_pit_rate 주입 / L4 monotone 제약, 판정=스택 swap+corr). 단 LOO 천장 낮아 보조 레버.
 
 ## [024] LGBM 결합FE(exp_034) 채택 — stack_v6 신기록 Private 0.95386 (목표 코앞) — 2026-06-05
 - **결정**: LGBM 스택 멤버를 exp_030(튜닝 base)→**exp_034**(튜닝 + i_*상호작용 + year-cat + stint-cat 결합, `features=lgbm_combined`+driver_te+aug)로 스왑. stack_v6 **logistic·equal 둘 다 제출**.
