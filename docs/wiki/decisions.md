@@ -2,6 +2,12 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [024] LGBM 결합FE(exp_034) 채택 — stack_v6 신기록 Private 0.95386 (목표 코앞) — 2026-06-05
+- **결정**: LGBM 스택 멤버를 exp_030(튜닝 base)→**exp_034**(튜닝 + i_*상호작용 + year-cat + stint-cat 결합, `features=lgbm_combined`+driver_te+aug)로 스왑. stack_v6 **logistic·equal 둘 다 제출**.
+- **결과(신기록)**: exp_034 단독 OOF **0.953818**(exp_030 0.952132 대비 **+0.00168**) → stack_v6 meta-OOF **logistic 0.954204 / equal 0.953842**(stack_v5 0.953504 대비 **+0.000700**, 스왑 2x 게이트 통과). **🏁 제출: logistic Public 0.95347 / Private 0.95386(신기록)**, equal 0.95303/0.95354. stack_v5(Private 0.95329) 대비 **+0.00057**. **logistic>equal 3연속**(Private +0.00032 — meta-OOF 순서·LB 일치, #006). OOF≈Private 갭 −0.00034. **목표 Private 0.9540 격차 +0.00014(사실상 도달)**.
+- **메커니즘(GBDT-FE 트랙 LB 검증)**: ADR #022(곱 상호작용 트랙 개방)가 LB로 확증됨 — exp_034 단독(0.953818)이 **구 4-모델 스택(0.953504)을 넘은 게 누수 아닌 실신호**(전부 per-row/OOF/train-fold 한정, 제출로 검증). year-cat/stint-cat은 LGBM 경로 `extra_categorical_cols` 버그(#023)로 **여태 LGBM 미측정**이던 레버 — 이번 활성.
+- **대안·트레이드오프**: 사용자 선택(2026-06-05) = **3레버 한 번에 결합**(격리 안 함) → +0.00168 의 i_*/year-cat/stint-cat **개별 기여는 미상**(디컨파운딩 백로그; stint-cat은 CatBoost서 −였음 #020). exp_034가 스택서 **지배적**(logistic coef 0.70, corr 0.977~0.986) → 단일 의존도↑·다양성 천장 근접. 추가 도약은 새 축(TabM)·분산감소(seed avg, #016). 잔여 +0.00014.
+
 ## [023] LGBM 경로 divergence — 통합 대신 노브 패리티 게이트로 재발 차단 — 2026-06-05
 - **결정**: 분리된 LGBM 경로(`src/train.py`)와 공유 골격(`src/train_common.py`)의 **divergence 버그 재발을, 경로 통합이 아니라 정적 패리티 게이트**(`scripts/check_knob_parity.py`)로 막는다. train_common 이 읽는 cross-model 노브(`cfg.features.*`·`cfg.augment.*`·`max_folds`·`kill_criterion`)를 `src/train.py` 도 전부 읽는지 검사 → 누락 시 exit 1.
 - **근본 원인**: 리팩토링 때 LGBM baseline 오염 방지(회귀 안전)로 `train.py` 를 `train_common` 통합에서 의도적으로 제외(train_common docstring "LGBM 통합 안 함"). 그 대가로 **`run_oof_cv` 에 추가되는 공통 훅/노브가 `train.py` 에 손으로 미러링돼야 하는데 누락이 반복**됨: ① `feature_builder`(ADR #019) ② `extra_categorical_cols` ③ `max_folds` 슬라이싱 + 부분실행 OOF NaN 가드(이상 본 라운드 코드리뷰서 발견·수정). 입력 동등성 게이트(`check_fold_inputs.py`)는 x_tr/x_va/x_te/w_tr 만 봐서 **control-flow 노브를 못 잡는 공백**이 있었음.
