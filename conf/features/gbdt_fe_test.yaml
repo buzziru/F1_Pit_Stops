@@ -1,0 +1,8 @@
+# [임시 검증용] GBDT FE 여지 A/B — base + Year-cat + 상호작용 5종(i_*)만 격리.
+# add_realmlp_features 가 추가하는 cross(Race_Compound/Race_Year)·Stint_cat 은 drop, Driver native 유지,
+# TE 없음 → exp_030(base+year-cat) 대비 "곱/비율 상호작용 피처"의 순효과만 측정. (#010 곱 미검증 공백 검증)
+feature_builder: add_realmlp_features
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year]

@@ -1,0 +1,8 @@
+# RealMLP v2 (M5 선행, realmlp_v2_plan.md): realmlp_fe_yearcat + Stint 5+ 버킷 범주형.
+# = exp_024 FE(상호작용5+cross2 TE+Year-cat) + Stint_cat(min(Stint,5)). arch/n_ens 는 model 측에서.
+# ADR #013 개정2(RealMLP 선행 허용) · 이슈 #12. model=realmlp 전용.
+feature_builder: add_realmlp_features
+target_encode_cols: [Driver, Race_Compound, Race_Year]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint_cat]

@@ -59,6 +59,9 @@ def add_realmlp_features(df: pd.DataFrame) -> pd.DataFrame:
     # ② 범주 cross (문자열 → fold 내 OOF TE 로 float 치환)
     out["Race_Compound"] = out["Race"].astype(str) + "_" + out["Compound"].astype(str)
     out["Race_Year"] = out["Race"].astype(str) + "_" + out["Year"].astype(str)
+    # ③ Stint 5+ 버킷 (v2, #12) — rare 레벨 노이즈 제거용 범주형. min(Stint,5).
+    #    extra_categorical_cols=[Year, Stint_cat] 로 활성 (conf/features/realmlp_fe_v2.yaml).
+    out["Stint_cat"] = out["Stint"].clip(upper=5).astype("int16")
     return out
 
 

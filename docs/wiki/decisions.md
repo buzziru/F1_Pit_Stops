@@ -2,6 +2,13 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [021] RealMLP v2(exp_032) 채택 — 배깅 중심으로 스택 신기록 OOF 0.953504 — 2026-06-05
+- **결정**: RealMLP v2(`exp_032`)를 스택 RealMLP 멤버로 **채택**(exp_024 대체). 레시피 = ep64 × **n_ens=15**(배깅) + **Stint_cat(5+)** + yekenot arch(hidden[512,256,128]·silu·plr_sigma2.33·embedding_size6), `features=realmlp_fe_v2`+aug, 5-fold. 계획 `realmlp_v2_plan.md`(2단계), ADR #013개정2.
+- **결과**: 개별 OOF 0.948773→**0.951978**(+0.0033, 배깅이 핵심 레버 — 1단계 스크리닝 exp_031 fold0 +0.0013로 선검증). **스택 swap 게이트 통과**: stack_v4(meta-OOF 0.952878)에서 exp_024→exp_032 스왑 → **logistic 0.953504 / equal 0.953275**(Δ **+0.000626**, 게이트 +0.0003의 2배). Kaggle P100 ~60분. stack_v5 생성·**미제출**.
+- **메커니즘 주의(트레이드오프)**: v2는 강해지며 **GBDT와 rank-corr 0.90→0.95**(decorrelation 일부 상실 — RealMLP의 스택 가치 원천이 비상관성이었음, LOO 확인). 그럼에도 개별 강도(+0.0033)가 상관 손실을 압도해 순효과 +. "강도 vs 다양성"이 이번엔 강도 승.
+- **부수 실증(스택 구조)**: LOO 한계기여 — XGB **0.000000**·CatBoost 0.000072·LGBM 0.000363·RealMLP 0.000558. → GBDT 3종 포화(corr 0.98~0.99), **XGB/CatBoost 튜닝·추가는 스택에 무용**(#013 "개별 튜닝 후순위" LOO 재확인). 잔여 천장 돌파는 **새 decorrelated 축**(TabM)·검증된 신규 신호로만.
+- **대안·다음**: stack_v5 제출(logistic vs equal 택1, #006), TabM 발사(스캐폴드 완료), LGBM GBDT-FE A/B(곱 상호작용 #010 미검증 공백, 계획). 목표 Private 0.9540(`memory/target-score.md`).
+
 ## [020] M4 스태킹 채택 — 신기록 Private 0.95273 (RealMLP FE·LGBM 튜닝·year-cat 합작) — 2026-06-04
 - **결정**: 4-모델 **스태킹 메타러너**를 M4 최종 앙상블로 채택(`src/stack.py`). 멤버 = LGBM-tuned(exp_030) + XGB year/stint-cat(exp_028) + CatBoost year-cat(exp_025) + RealMLP FE+year-cat(exp_024). stack_v4 **균등·logistic 둘 다 제출**.
 - **결과(신기록)**: stack_v4 **균등 Private 0.95273 / Public 0.95203**, logistic Private 0.95271/Public 0.95210. 기존 3-way(Private 0.95165) 대비 **+0.00108**. OOF≈Private 재확인(갭 +0.00013/+0.00017, #006). 균등이 Private 미세 우위(과적합 적음) → 균등 권장.

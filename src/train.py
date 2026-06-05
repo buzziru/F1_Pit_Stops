@@ -65,8 +65,16 @@ def run(cfg: DictConfig) -> dict[str, Any]:
             config=OmegaConf.to_container(cfg, resolve=True),
         )
 
-    train_df = features.build_features(data.load_train())
-    test_df = features.build_features(data.load_test())
+    feature_builder = cfg.features.get("feature_builder", None)  # ADR #019 (모델별 FE 훅)
+
+    def _build(df: pd.DataFrame) -> pd.DataFrame:
+        df = features.build_features(df)
+        if feature_builder:
+            df = getattr(features, feature_builder)(df)
+        return df
+
+    train_df = _build(data.load_train())
+    test_df = _build(data.load_test())
     feat_cols = features.get_feature_cols(train_df)
 
     # ablation: conf/features 의 drop_cols 에 지정된 컬럼은 모델 입력에서 제외
@@ -84,7 +92,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     # 외부 원본 증강 (train 전용). 검증/test 엔 절대 미포함. #8 참조.
     x_src = y_src = None
     if aug_enabled:
-        src_df = features.build_features(data.load_source_augmentation())
+        src_df = _build(data.load_source_augmentation())
         x_src = src_df[feat_cols]
         y_src = src_df[config.TARGET_COL].astype(int)
         print(f"[augment] 원본 {len(x_src):,}행 추가 (weight={aug_weight})")

@@ -1,0 +1,11 @@
+# TabM (pytabkit TabM_D) — 새 non-GBDT 모델군. 스택 "새 축" 후보 (realmlp_v2_plan L37,
+# 2위 솔루션 사용). TabM_D = 메타튜닝 default → 무튜닝 사용. random_state 는 train_tabm.py 주입.
+# tabm_k = 네이티브 효율 앙상블(병렬 헤드) — None=패키지 default. n_epochs None=default 스케줄.
+# Kaggle GPU(device=cuda). 로컬 CPU 스모크만 model.params.device=cpu model.params.n_epochs=2.
+name: tabm
+params:
+  device: cuda       # Kaggle P100/T4. 로컬 CPU 스모크는 cpu 로 override
+  n_cv: 1            # 내부 CV 미사용 → 동일 fold 비교 (exp_016~ 관례)
+  n_refit: 0
+  n_epochs: null     # TabM_D 메타튜닝 default 스케줄 사용 (스모크만 override)
+  verbosity: 1
