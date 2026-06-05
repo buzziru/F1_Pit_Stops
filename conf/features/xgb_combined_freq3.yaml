@@ -1,0 +1,8 @@
+# [GBDT decorrelation L1+i_*, 수정판] XGB = i_*(강도) + RealMLP가 TE한 3변수
+# (Driver·Race_Compound·Race_Year) 모두 freq-enc(decorrelation). 사용자 아이디어.
+# exp_042(Driver만 freq, cross drop)의 완전판 — TE 3축 전부 분기. 판정=스택 swap+corr.
+feature_builder: add_xgb_freq_features
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Driver, Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

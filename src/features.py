@@ -122,6 +122,38 @@ def add_driver_freq(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_xgb_decorr_features(df: pd.DataFrame) -> pd.DataFrame:
+    """L1+i_* 합성 — i_* 상호작용(강도) + Driver freq-enc(decorrelation) (gbdt_decorrelation_plan).
+
+    가설: i_*로 강해진 XGB에 freq-Driver(TE와 다른 축)를 얹으면 "강한데 덜 중복"이 되어
+    스택 기여가 L1(freq만)·i_*(강도만) 단독보다 클 수 있다. native Driver·cross·Stint_cat 은
+    drop_cols 로 제거하고 Driver_freq(numeric)로 대체. 판정=스택 swap+corr(개별 아님).
+    """
+    return add_driver_freq(add_realmlp_features(df))
+
+
+def add_xgb_freq_features(df: pd.DataFrame) -> pd.DataFrame:
+    """i_* + RealMLP가 TE한 3변수(Driver·Race_Compound·Race_Year) 모두 freq-enc
+    (사용자 아이디어, gbdt_decorrelation_plan L1 확장).
+
+    RealMLP v2(realmlp_fe_v2)는 Driver·Race_Compound·Race_Year 를 OOF-TE 함. XGB 는 이 3개를
+    **freq(count)** 로 인코딩 → 강도(i_*)는 LGBM 과 공유하되 **TE 3변수 축을 전부 분기**해 동화
+    완화. 누수 0(타깃 미사용·대회 train 카운트 전역맵). native/cross 원본은 drop_cols 로 제거.
+    """
+    from src import data  # 지연 임포트(순환 회피)
+
+    out = add_realmlp_features(df)  # i_* + cross(Race_Compound/Race_Year) + Stint_cat
+    tr = data.load_train()
+    maps = {
+        "Driver": tr["Driver"].value_counts(),
+        "Race_Compound": (tr["Race"].astype(str) + "_" + tr["Compound"].astype(str)).value_counts(),
+        "Race_Year": (tr["Race"].astype(str) + "_" + tr["Year"].astype(str)).value_counts(),
+    }
+    for col in ("Driver", "Race_Compound", "Race_Year"):
+        out[f"{col}_freq"] = out[col].map(maps[col]).fillna(0).astype("int32")
+    return out
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """모델에 투입할 피처 컬럼 목록을 반환한다 (id, target 제외).
 
