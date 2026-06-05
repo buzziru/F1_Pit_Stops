@@ -1,0 +1,9 @@
+# [GBDT-FE 결합, ADR #022 후속] exp_030(driver_te + aug + 튜닝) 위에 3개 레버 결합:
+#   ① i_* 산술 상호작용 5종 (add_realmlp_features; cross·Stint_cat 버킷은 drop)
+#   ② year-cat ③ stint-cat (extra_categorical_cols=[Year, Stint] — LGBM 경로 수정으로 활성)
+# 사용자 선택(2026-06-05): 3개 레버를 격리 않고 한 번에 결합해 exp_030(0.952138) 대비 측정.
+feature_builder: add_realmlp_features
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

@@ -1,0 +1,19 @@
+# exp_030 튜닝 파라미터 = Optuna best(experiments/tuning/lgbm_best.json)를 cap12000 으로 재실행.
+# 스택 멤버 LGBM-tuned 와 동일 설정. (driver_te + 외부증강 weight 1.0 에서 튜닝됨)
+# seed / n_jobs / verbose 인프라 값은 train.py 가 src.config 기준으로 주입.
+name: lgbm
+params:
+  objective: binary
+  metric: auc
+  boosting_type: gbdt
+  is_unbalance: false
+  learning_rate: 0.010126402783848304
+  num_leaves: 219
+  feature_fraction: 0.6032017039026905
+  bagging_fraction: 0.6580432736281271
+  bagging_freq: 1
+  min_child_samples: 145
+  lambda_l1: 0.0035558761311390175
+  lambda_l2: 2.4332307216123255e-05
+num_boost_round: 12000
+early_stopping: 200

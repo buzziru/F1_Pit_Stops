@@ -84,6 +84,11 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     # 타깃 인코딩 대상은 native categorical 에서 제외 (fold-내 OOF 로 float 치환됨)
     te_cols = [c for c in cfg.features.target_encode_cols if c in feat_cols]
     cat_cols = [c for c in config.CATEGORICAL_COLS if c in feat_cols and c not in te_cols]
+    # 모델별 추가 범주형 (extra_categorical_cols) — train_common 과 동일. LGBM 경로 누락분 보강(ADR #022 후속).
+    # 기본 [] → 기존 LGBM 런 불변. int 컬럼(Year/Stint)은 lgb categorical_feature 로 처리(category dtype 강제 안 함).
+    for c in cfg.features.get("extra_categorical_cols", []) or []:
+        if c in feat_cols and c not in te_cols and c not in cat_cols:
+            cat_cols.append(c)
 
     x = train_df[feat_cols]
     y = train_df[config.TARGET_COL].astype(int)
@@ -122,8 +127,9 @@ def run(cfg: DictConfig) -> dict[str, Any]:
             x_src_f = enc.transform(x_src) if te_cols else x_src
             x_tr = pd.concat([x_tr, x_src_f], ignore_index=True)
             y_tr = pd.concat([y_tr.reset_index(drop=True), y_src.reset_index(drop=True)], ignore_index=True)
-            for col in cat_cols:  # concat 후 category dtype 복원 (union 카테고리)
-                x_tr[col] = x_tr[col].astype("category")
+            for col in cat_cols:  # concat 후 category dtype 복원 (원래 category 인 것만; int extra=Year/Stint 는 int 유지)
+                if str(x[col].dtype) == "category":
+                    x_tr[col] = x_tr[col].astype("category")
             w_tr = np.concatenate([np.ones(n_comp), np.full(len(x_src_f), aug_weight)])
 
         dtrain = lgb.Dataset(x_tr, y_tr, categorical_feature=cat_cols, weight=w_tr)
