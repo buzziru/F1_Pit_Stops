@@ -2,55 +2,54 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT = GitHub Issues, 상시 가이드 = `CLAUDE.md`, 지식 = `docs/wiki/`.
 
-_최종 갱신: 2026-06-06 (**기존 4멤버 강화 전부 park/소진** — TabM #031·RealMLP n_refit #032·CatBoost 레버소진·ep/lr park. **NN 신축이 유일 주경로**. 리서치: **TabICL = S6E5 1위·8위 핵심 멤버**. exp_070 cat.codes fold0 0.9506(corr 0.97 CatBoost급)→**범주형 ordinal 왜곡 발견·개선**(자동 인코딩)→**exp_071_tabicl_raw_full Colab L4 실행 대기**. 문서 다수 신설. wandb 방침·노트북 컨벤션. 커밋 `b680e94`.)_
+_최종 갱신: 2026-06-06 (**TabICL 5번째 멤버 채택 → stack_v9 Private 0.95400 신기록**. 이후 **축① GBDT 코어 분기(interaction_constraints) park** — 분기 성공해도 스택 전이 0. **분산 레버 천장 실측**: 5멤버 OOF 잔차상관 → **N_eff=1.03 / 분산감소 천장 −2.6%** = 모델 다양성 레버 소진. **축②/③(새 모델) 보조 강등, 임계경로 = FE 신호 레버로 재배치.** 커밋 `643bba3`.)_
 
-## 🟡 진행 중 / 다음 세션 첫 작업 — **TabICL raw full (Colab L4)**
-- **`kaggle/exp_071_tabicl_raw_full.ipynb`** Colab L4 실행(사용자 제어, [[colab_jobs]]). 범주형 **자동 인코딩**(cat.codes 제거), full 5-fold, W&B online.
-  - ⚠️ cell3에서 **개선판 dataset 재download**(런타임 재시작/`/content/srcd` 삭제로 캐시 회피).
-  - 산출물 `exp_071_tabicl_raw_full_{log,oof,sub}` → `experiments/{logs,oof,submissions}/` 복사(접미사 떼고 표준명).
-- **회수 후 분석**: ① raw 개별 vs cat.codes 0.9506(개선 효과) ② corr↔멤버(분기) ③ **5-member 스택 게이트** `src.stack --members exp_034_lgbm_combined,exp_043_xgb_freq3,exp_046_rmlp_nens24_full,exp_025_cat_yearcat,exp_071_tabicl_raw_full` → **logistic > 0.954338(Δ≥+0.0001)이면 채택**.
-- TabICL fold0(cat.codes) 참고값: 개별 0.9506·corr↔RealMLP 0.9705/CatB 0.9712(앵커 0.969급 분기). raw로 개별↑·corr 변화 기대.
+## 🟢 현재 최고 — stack_v9 (Private 0.95400 신기록)
+- **🏆 LB·OOF 최고**: **stack_v9** = LGBM exp_034 + XGB exp_043 + RealMLP exp_046 + CatBoost exp_025 + **TabICL exp_071** (logistic). **meta-OOF 0.954357 / Private 0.95400**(제출, ADR #033). 파일 `stack_v9_5mem_tabicl_logistic.csv`.
+- **목표 Private 0.95452** → 잔여 격차 **+0.00052**. 상위 10% 라인, 계속 도전(마무리 없음).
 
-## 📈 현재 최고 (이번 세션 멤버 변동 없음)
-- **🏆 LB 최고(제출)**: **stack_v7 Private 0.95395**. **🥇 OOF 최고(미제출)**: **stack_v8 logistic 0.954338**(`stack_v8_logistic.csv`).
-- **멤버(seed=42)**: LGBM exp_034(0.953818)·XGB exp_043(0.953288)·RealMLP exp_046(0.952384)·CatBoost exp_025(0.950043). corr: GBDT 0.97~0.99(포화), CatBoost↔RealMLP 0.969(앵커).
-- **목표 Private 0.95452** → 격차 **+0.00057**. **기존 멤버 강화 전부 소진 → 새 NN 축(TabICL/FTT)이 유일 돌파구.**
+## 🔴 핵심 발견 (이번 세션) — 분산 레버 천장 실측 → 전략 전환
+> `scripts/diag_resid_corr.py` (5멤버 OOF **잔차상관** 진단, [[decisions]] #034 / [[stacking_plan]] §9.6)
+- **유효 독립 모델 수 N_eff = 1.03** (오차상관 평균 0.967, K=5). GBDT×2+RealMLP+CatBoost+TabICL = 5 아키텍처인데 **오차 공간 독립성은 1.03개**. 최선 쌍(RealMLP↔CatB 0.956)도 N_eff 1.02.
+- **평균화 분산감소 이론천장 = −2.6%**. 스택이 best single 대비 이미 +0.001 먹음 = **천장 거의 소진**.
+- **오차 분포**: 79%는 풀림(오차 0.065), 전 오차가 **경계영역 20.7%(오차 0.433)에 집중**. 그중 **합의-오답 3.19%**(5모델 만장일치 오답) = 환원불가 바닥(라벨노이즈/전략 서프라이즈).
+- **결론**: 잔여 +0.00052는 **분산 공간에 없음**. 모델 다양성 레버(축①/②/③) 전부 동일 천장 → **임계경로 = FE 신호 레버**.
 
-## 🔜 다음 할 일 (우선순위)
-1. **TabICL raw full → 스택 게이트**(위 🟡) — **유일 활성 주경로**. 통과=5번째 멤버 채택. 약하면 → TabICL 피처/augment A/B(#2).
-2. **TabICL 개선 백로그**(통과·경계 시): ① 우리 FE 피처 A/B(raw base vs realmlp_fe_v2) ② augment True A/B(메모리 batch↓) ③ n_estimators↑. ([[tabicl]])
-3. **제출 결정 — TabICL 결과 이후**: TabICL 채택 시 5-member 결합 1회 제출(권장). 미채택 시 stack_v8(0.954338) 단독 제출 판단. 최종 robustness=seed-avg(#028) 선택.
-4. **(TabICL park 확정 이후에만) FTT** — 준비 완료·보류([[ftt]], `train_ftt.py`/`exp_069`). TabICL이 막힐 때만 fold0 corr 검증. ⚠️ pytabkit n_refit 미지원.
-5. **(또는) 마무리** — TabICL(+FTT) 소진 시 회고 캡스톤.
+## 🔜 다음 할 일 (우선순위) — FE 신호 레버로 전환
+1. **경계영역 3.2% 합의-오답 케이스 EDA**(최우선, 가장 EV 높은 진입점). `eda-explorer`로 5모델 만장일치 오답(`std<0.05 & |y−p̄|>0.5`) 케이스 프로파일링:
+   - 어떤 상황에서 전원 틀리나(드라이버/컴파운드/랩 구간/포지션 변화/세이프티카 정황?)
+   - 현 피처가 그 패턴 못 가르는지 확인 → **가르면** F1 도메인 피처 후보 설계, **못 가르면**(환원불가) 목표가 외부데이터/킬러피처 의존이라는 결론 → 방향 재확인.
+2. **F1 도메인 피처 설계**(1의 결과 의존): 피트윈도 거리(스틴트/컴파운드별 통상 피트랩까지)·갭 다이내믹스(앞차 간격→언더컷)·스틴트상대 열화율 등. GBDT FE 게이트(#026) 적용 — 2피처 비축정렬 상호작용만.
+3. **(보조·병렬만)** 축②/③(새 모델 멤버): 동일 천장 안이라 주스레드 금지. 싼 것·병렬만(FTT full 이미 준비됨).
 - ⚠️ **과몰입 가드**(kill_criterion·천장 게이트). GPU 발사 전 **피처 confirm**(메모리). 노트북 빌드=[[notebook_conventions]].
 
 ### 🅿️ Parked / 결론 (재시도 금지)
-- **TabM 5번째(#029→#031)** — 7레버(hash·pwl·tabm_k·tabm-mini·val_fraction·Stint·cross) 소진, 개별0.951↔corr0.977 고정(동화). PLR-MLP라 RealMLP와 구조적 수렴.
-- **RealMLP n_refit=1(#032)** — 개별 +0.00035나 corr0.9947(복제)→스택 −0.00004(포화 전이0). n_refit은 비포화 새 NN축에만 가치.
-- **CatBoost 전부 소진** — HP튜닝(#030)·Driver hash(분기약)·Driver-TE 조합분리(exp_067, native ctr 손실)·ctr 정규화 묶음(exp_068, CPU통제 −0.00005). **exp_025 default 유지.** (Driver-TE 분리 GPU+cap 재시도는 **우선순위 최하·사실상 park**, EV 매우 낮음 — 사용자 2026-06-06.)
+- **축① GBDT 코어 분기(#034)** — interaction_constraints corr 0.9928→0.9753 분기 성공해도 swap −0.000086/add +0.000001(앵커 클라우드 흡수). monotone(#072)은 corr 0.9919로 분기 실패. DART는 train.py `best_iteration` 슬라이싱과 비호환.
+- **TabM 5번째(#029→#031)** — 7레버 소진, 개별0.951↔corr0.977 고정(동화, PLR-MLP 구조 수렴).
+- **RealMLP n_refit=1(#032)** — 개별 +0.00035나 corr0.9947(복제)→스택 −0.00004. n_refit은 비포화 새 NN축에만 가치.
+- **CatBoost 전부 소진** — HP튜닝(#030)·Driver hash·Driver-TE 분리(exp_067)·ctr 정규화(exp_068). exp_025 default 유지.
 - **ep/lr(exp_056, #029)** — 개별+0.00038이나 스택 −0.000008(RealMLP 포화).
 - **seed-avg(#028)** — 스택 중립. 최종 robustness용만.
 
 ## ⚙️ 인프라·운영 (GPU 실행 SSOT 3종)
 - **Kaggle T4 헤드리스 = [[kaggle_jobs]]**: `kernels push/output`, 동시 GPU ≥2, slug=title 케밥, status API 500→`list --mine`. **wandb=false 유지**(secret attach 미유지).
 - **Lightning L4 Job = [[lightning_jobs]]**: `.venv` 그대로 GPU, teamspace `paraise/ml`·studio `predicting-f1-pit-stops`. wandb=`-e WANDB_API_KEY`(online true).
-- **Colab L4 = [[colab_jobs]]**(T4 OOM·L4 24GB 필요 모델, 예 TabICL): Kaggle API로 데이터/src→`src.train_*`. **Colab Secrets**(KAGGLE_*·WANDB_API_KEY, `os.environ`). 사용자 UI 실행→**wandb online true**. 노트북=`kaggle/<exp_id>.ipynb`(새 실험마다, [[notebook_conventions]]).
+- **Colab L4 = [[colab_jobs]]**(T4 OOM·L4 24GB 필요 모델, 예 TabICL): Kaggle API로 데이터/src→`src.train_*`. **Colab Secrets**(KAGGLE_*·WANDB_API_KEY). wandb online true. 노트북=`kaggle/<exp_id>.ipynb`.
 - **wandb 방침([[kaggle-gpu-wandb-on]])**: Colab(UI)·Lightning=true / Kaggle 헤드리스=false.
-- 스태킹: `uv run python -m src.stack --members ... --tag NAME`(logistic best).
+- 스태킹: `uv run python -m src.stack --members ... --tag NAME`(logistic best). 잔차상관 진단: `scripts/diag_resid_corr.py`.
 
 ## ✅ 완료 (2026-06-06 세션)
-- **NN 신축 리서치**(kaggle-researcher) → **TabICL 1순위**(S6E5 1·8위), FTT 2순위. pytabkit 외 안정 라이브러리.
-- **TabICL 구현**: `src/train_tabicl.py`·`conf/model/tabicl.yaml`·`tabicl.md`. exp_070 cat.codes fold0 0.9506→**범주형 자동인코딩 개선**(cat.codes 제거)→exp_071 raw 준비. T4 OOM→**L4 Colab 전환**(`colab_jobs.md`).
-- **FTT 구현**: `train_ftt.py`·`ftt.yaml`·`ftt.md`·exp_069 노트북(보류). skorch 의존.
-- **기존멤버 park 확정**: TabM #031·RealMLP n_refit #032·CatBoost(ctr 정규화 exp_068 기각). decisions #030~#032.
-- **인프라/방침**: `colab_jobs.md`·`notebook_conventions.md`·`pytabkit_params.md` 신설. wandb 인프라별 디폴트. 노트북 exp_id 파일명 컨벤션.
-- 커밋: `6d5f39c`(NN 신축·park) → `b680e94`(TabICL 범주형 개선·컨벤션).
-- **이전 세션**: stack_v7 Private 0.95395·stack_v8 OOF 0.954338·문서 모델별 재편·exp_001~070.
+- **TabICL 5번째 멤버 채택**(ADR #033): exp_071 raw full(개별 0.949358)→ stack_v9 OOF 0.954357 / **Private 0.95400 신기록**. 범주형 raw 자동인코딩 = cat.codes와 등가(가설 기각, Δ3e-6).
+- **축① GBDT 코어 분기 실행·park**(ADR #034): exp_072 monotone·exp_073/074/075 interaction_constraints. swap/add 게이트 둘 다 미달.
+- **분산 레버 천장 실측**(`scripts/diag_resid_corr.py`, ADR #034): N_eff 1.03 / 천장 −2.6% → 임계경로 FE 재배치.
+- **실험 회고 docs 3편**: `exp_037_046_stackv7_track.md`·`exp_047_068_nn_strengthen_parked.md`·`exp_069_071_nn_new_axis.md`. stacking_plan §9 전면 갱신.
+- GitHub: #13 닫음(축① park), #14/#15 보조 강등, #10 갱신.
+- 커밋: `ab657dc`(stack_v9·축① 결과) → `643bba3`(분산 천장 진단·재배치).
 
 ## 🔗 열린 이슈
-- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — stack_v8. 잔여=**NN 신축(TabICL/FTT)→목표 0.95452**.
-- [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11) [tuning] Optuna — LGBM·CatBoost 완료(park).
-- [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) [feature] RealMLP FE — exp_024 채택.
-- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생 피처 — parked(#010).
+- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — stack_v9(Private 0.95400). 잔여=**FE 신호 레버→목표 0.95452**.
+- [#14](https://github.com/buzziru/F1_Pit_Stops/issues/14) [model] 축② 새 앵커 멤버 — **보조 강등**(천장 소진).
+- [#15](https://github.com/buzziru/F1_Pit_Stops/issues/15) [model] 축③ FTT full — **보조 강등**.
+- [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11) [tuning] Optuna — 완료(park). [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) RealMLP FE — exp_024 채택. [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생 피처 — parked(#010). [#13](https://github.com/buzziru/F1_Pit_Stops/issues/13) 축① — **닫음**(park).
 
 repo: https://github.com/buzziru/F1_Pit_Stops
