@@ -1,6 +1,6 @@
 # GBDT (LGBM · XGB) — 모델별 SSOT (피처 전략 · decorrelation 계획)
 
-> 2026-06-06 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **L1 성공(exp_043 채택, #027) → L4(알고리즘·제약 분기) 실행 중** = stack_v9 "코어 분기" 축①([[stacking_plan]] §9). GBDT 코어 LGBM↔XGB corr **0.9928**(실효 1축·가중 66%) 낮추기. · 관련 [[decisions]] #027·#033·#025(동화 실증)·#015·#021
+> 2026-06-06 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **L1 성공(exp_043 채택, #027) → L4(알고리즘·제약 분기) park** = stack_v9 "코어 분기" 축①([[stacking_plan]] §9.5). interaction_constraints가 corr 0.9928→0.9753 분기 성공해도 **스택 swap −0.000086/add +0.000001 미달**(앵커 클라우드에 흡수). 분산 레버 천장 실측(N_eff 1.03, [[decisions]] #034) → **임계경로 FE 신호 레버로 재배치**. · 관련 [[decisions]] #034·#027·#033·#025(동화 실증)·#015·#021
 
 > **결과 (2026-06-05)**: L1(인코딩 분기) **단독**으로는 미달(exp_041 Driver-freq Δ+0.000020), **i_*(강도)와 결합 + TE 3변수 전부 freq-enc**(exp_043)하면 **스택 Δ+0.000103 통과·채택**(ADR #027). 즉 **인코딩 분기 + 강도를 동시에** 줘야 동화를 이긴다(같은 i_*만 공유=동화). progression: exp_041(freq만)→exp_042(i_*+Driver-freq, +0.000083)→exp_043(i_*+3var-freq, +0.000103✅). L2(field_pit_rate)·L4(monotone)는 미실행(천장 낮아 후순위).
 
