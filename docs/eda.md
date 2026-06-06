@@ -55,4 +55,12 @@
 
 ### 피처 우선순위 (모델링 반영)
 
+## 7. 원본(src_raw) vs train 합성 변형 분석 (2026-06-06, eda_05)
+- **LapNumber sparsity = 합성 산물 확정**: src consec_frac **0.9921**(dense, gap median 1) → train **0.3195**(sparse, gap median 3, span/n 3.73). 합성이 그룹당 ~3랩 간격으로 의도적 서브샘플링.
+- **그룹 팽창**: src 1,838그룹(중앙 56랩) → train 36,829그룹(중앙 12랩). Driver **31명(실제)→887명(합성 ID 분할)**, train 중 실제 Driver 행 6.9%뿐.
+- **타깃률**: src 25.48% → train 19.90%(−5.58%p). 2023 아티팩트(train 0.96%, src 3.08%)는 sparse sampling 시 **피트 실시 랩(LapNumber+1) 71.5% 누락**으로 PitNextLap==1 손실 — 2023 특이처리가 아니라 샘플링 부작용.
+- **inherited 파생피처 훼손**: `LapTime_Delta`·`Cumulative_Degradation`·`Position_Change`는 원본(dense)에서 계산된 값을 합성행에 상속. sparse 후 **연속랩 차분 의미 붕괴** — `LapTime_Delta` mean src −0.20 → train −3.77. 컬럼차는 `Normalized_TyreLife`(src only, 누수 의도 드롭)·`id`(train only)뿐.
+- **함의**: ① 연속 delta/slope 불신(원칙4 근거 확정) ② **`is_consec_lap`/lap-gap 마스크 피처**(inherited delta 신뢰구간을 트리에 알림 — raw 없는 새 축) 유망 ③ 증강 weight 는 분포차에도 OOF 실측상 w1.0 최선(exp_013~015) 유지.
+- 노트북: `notebooks/eda_05_source_vs_train_drift.ipynb`
+
 TyreLife · LapNumber · Stint · Compound · RaceProgress(구간화 후보). **`is_stable_delta`(|LapTime_Delta|≤0.3 이진): 피트율 2.6% vs 26.1% — feature-smith 1순위 후보.** `Cumulative_Degradation` 구간/클리핑 피처도 ablation 가치. `LapTime (s)` 단독은 약함.

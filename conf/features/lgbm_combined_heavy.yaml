@@ -1,0 +1,10 @@
+# [Heavy FE 배치1, ADR #035] lgbm_combined 노브 + add_heavy_fe (다수 시계열/횡단면 파생).
+# add_heavy_fe = add_realmlp_features(i_*+cross+Stint_cat) + lap_gap/is_consec_lap
+#   + 테마 A~E 배치1 신호(~30개). Driver TE 유지 — 배치1은 그 위에 신호 추가.
+# 누수안전: 시계열=그룹 shift(1)+expanding(과거만), 횡단면=train 전역 중앙값/순위(타깃 무관).
+# 판정: 개당 마진 아님 → Kaggle 집합 OOF A/B + feature importance 로 메인이 결정.
+feature_builder: add_heavy_fe
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

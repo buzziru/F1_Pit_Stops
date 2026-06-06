@@ -1,0 +1,10 @@
+# [Heavy FE 배치2 — 횡단면 prune, ADR #035] lgbm_combined 노브 + add_heavy_fe_xsec.
+# add_heavy_fe_xsec = add_realmlp_features(i_*+cross+Stint_cat) + 횡단면 group-relative 12개
+#   (검증된 4개 + 확장 7개 = 11개). 시계열/mask 는 batch1 에서 노이즈로 기각 → 전부 제외.
+# 누수안전: 타깃 미사용(피처 컬럼의 그룹 rank/median) · 각 df 독립 계산(정규화 상수).
+# 판정: 개당 마진 아님 → Kaggle 집합 OOF A/B + feature importance 로 메인이 결정.
+feature_builder: add_heavy_fe_xsec
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

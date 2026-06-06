@@ -1,0 +1,10 @@
+# [GBDT decorrelation — Driver 완전 제거] 1st-place "Driver_Dropped" 아이디어 + eda_05(Driver 31→887 합성ID, 실제 6.9%).
+# 현 XGB(exp_043)는 Driver_freq 디코릴레이션인데도 LGBM과 고동기화 잔존(N_eff 1.03) → freq로 부족.
+# Driver 신호 완전 제거(native·TE·freq 없음) → 비-Driver 전이가능 신호만 의존 → 진짜 다른 에러 노림.
+# vs exp_043: Driver_freq/Race_Compound_freq/Race_Year_freq 전부 없음. native Race/Compound 유지(저카디·비-shift).
+# 판정 = 잔차상관 하락 + 스택 swap/add meta-OOF (개별 AUC 아님 — Driver 큰 신호라 개별은 하락 예상).
+feature_builder: add_realmlp_features
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Driver, Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

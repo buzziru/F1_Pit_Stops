@@ -2,6 +2,20 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [036] Heavy FE 종합 음성 — 현 LGBM(Driver TE+i_*)에서 FE 증분 흡수(개별·다양성 양축), 다음 레버 미정 — 2026-06-06
+- **결정**: #035 의 "Heavy FE 임계경로" 를 **실측으로 시도 완료 → 현 모델 가족에선 무기여 확인.** 단정적 park 아님 — **다음 레버는 사용자 결정 대기**(아래 후보). FE 패러다임(Heavy FE) 자체는 유효하나 우리 베이스라인이 신호를 이미 포화.
+- **이유(FE 7전 실측, 전부 net-negative)**: prevstint/pitwin/relhist(재정규화 −0.0002씩) · poschange(시계열 새축 −0.0003) · is_consec_lap(−0.0002) · **Heavy FE 25일괄 −0.00130** · **횡단면 prune 11개 −0.00038**. 횡단면은 개별뿐 아니라 **다양성도 실패**(잔차상관 LGBM 0.9945↑, 스택 add +0.00001/swap −0.00007). importance 있어도(tyrelife_rank gain402) OOF·스택 무기여 = `Driver`(gain 11450) 신호 지배 + GBDT 가 raw 에서 등가 추출. **Driver-drop XGB 디코릴레이션도 corr 0.99(#035)** → 신호 축·분산 축 둘 다 포화.
+- **진단 근거**: eda_05(원본 vs train) — 합성이 LapNumber sparse 샘플링(연속률 0.99→0.32)·Driver 31→887 합성ID·`LapTime_Delta` 등 inherited delta 훼손(dense→sparse). → 시계열 FE 가 노이즈인 이유 설명. eda_03/04 합의-오답 ~3% 중 상당부 환원불가(라벨노이즈/2023 아티팩트).
+- **대안·트레이드오프(다음 레버 후보, 미결)**: (A) **대규모 Heavy FE(200~400)+feature selection** — 우리는 11~25개만, 스케일 부족 가능성(1st place 규모 미도달). (B) **훼손 고-importance 피처 교정** — `LapTime_Delta`(gain879, importance 3위)를 gap-정규화 재계산(값 자체 교정, 플래그 is_consec_lap 은 실패). (C) **외부데이터**(1st place 실제 돌파구: 원본 추가+Driver 분포 대응). (D) **stack_v9(Private 0.95400, 상위10%) 견고화/마무리.** ⚠️ FE 7전+분산 소진 = 잔여 +0.00052 가 현 접근의 베이즈-AUC 밖일 신호 — (C)/(D) 가 EV 높을 수 있음. **결정 주체=사용자.**
+
+## [035] Driver-drop XGB 디코릴레이션 기각 → 패러다임 전환: Heavy FE 가 임계경로 — 2026-06-06
+- **결정**: ① **Driver-dropped XGB(exp_xgb_nodriver) 미채택** — 1st-place "Driver_Dropped" 아이디어 이식이나 디코릴레이션 실패. ② **변산/디코릴레이션 레버는 피처-ablation으로도 소진 확정**(#034 보강) → 격차 +0.00052 는 분산 공간에 없음 재확인. ③ **패러다임 전환: 단일 피처 마진 게이트(#026) 방식 폐기 → Heavy FE(다수 피처 일괄 + 집합효과·중요도 판정)** 로 임계경로 재설정(사용자 3회 강조 교정).
+- **이유(실측)**:
+  - **Driver-drop 디코릴레이션 실패**: 잔차상관 XGBnd~XGB **0.9905**·~LGBM **0.9909** = 기존 XGB~LGBM 0.9898과 동일(에러구조 불변). 개별 AUC 0.953222(XGB 0.953288과 거의 동일 → 우리 XGB가 이미 Driver_freq라 Driver 의존 약함, 빼도 무변). 스택 swap −0.000013 / add +0.000022 = 노이즈 수준.
+  - **FE 미소진(어시스턴트 오독 정정)**: "1등=FE 아닌 앙상블"을 "FE 불필요"로 오독했음. 실제 1등도 **Heavy FE 200~400 피처를 전제로 깔고** 앙상블로 차별화 = Heavy FE 는 상위권 진입 전제. 우리는 i_* 5개+단일 4개뿐 = **Heavy FE 미시도**. 합의-오답(5모델 만장일치 오답) 오차분석 = **FE 필요성의 증거**(소진 신호 아님). 개별 모델 underperformance = 시그널을 못 잡는 탓.
+  - **단일 피처 기각 ≠ 신호 없음**: prevstint/pitwin/relhist/poschange/is_consec_lap 5건 단일 Δ−0.0002~−0.0003 은 개당 마진게이트 산물이지 FE 소진 아님. Heavy FE 는 다수 피처 집합효과+importance 선택으로 판정하는 다른 패러다임.
+- **대안·트레이드오프**: #026 게이트(흡수 회피·누수안전·sparsity가드, eda_05)는 설계 원칙으로 유지하되 **개당 accept/reject 판정 기준에서는 폐기**. Heavy FE 부수효과 = FE 레시피별 모델 다양성 → 변산 레버에도 기여(분산·신호 둘 다 먹임). 리스크: 다수 피처 과적합/노이즈 → **집합 OOF + feature importance 가지치기 + 누수/sparsity 안전**으로 관리. is_consec_lap·lap_gap·poschange 코드는 Heavy FE 배치 구성원으로 보존(revert 안 함).
+
 ## [034] 분산 레버 천장 실측 → 축①(코어 분기) park + 신모델 축 전체 강등, 임계경로 FE 신호 레버로 재배치 — 2026-06-06
 - **결정**: ① **축① GBDT 코어 분기(interaction_constraints) park 확정** (swap −0.000086, add +0.000001 둘 다 게이트 미달). ② **축②/③(새 모델 멤버, FTT full 포함)도 동일 천장 안이라 보조 강등** — 주스레드 금지. ③ **임계경로 = FE/도메인 신호 레버로 재배치**. 목표 0.95452 잔여 +0.00052 는 분산 공간에 없음(실측).
 - **이유(5멤버 OOF 잔차상관 진단, `scripts/diag_resid_corr.py`)**:

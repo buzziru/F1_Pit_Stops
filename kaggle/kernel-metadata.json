@@ -1,9 +1,9 @@
 {
-  "id": "buzziru/ftt-exp069-baseline-fold0",
-  "title": "ftt exp069 baseline fold0",
-  "code_file": "exp_069_ftt_baseline_fold0.ipynb",
+  "id": "buzziru/xsec-cpu-ab",
+  "title": "xsec cpu ab",
+  "code_file": "xsec_cpu_ab.ipynb",
   "language": "python", "kernel_type": "notebook",
-  "is_private": true, "enable_gpu": true, "enable_internet": true,
+  "is_private": true, "enable_gpu": false, "enable_internet": true,
   "dataset_sources": ["buzziru/f1-pit-src","aadigupta1601/f1-strategy-dataset-pit-stop-prediction"],
   "competition_sources": ["playground-series-s6e5"], "kernel_sources": []
 }

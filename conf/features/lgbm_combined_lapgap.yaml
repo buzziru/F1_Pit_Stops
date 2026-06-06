@@ -1,0 +1,9 @@
+# [sparse delta 신뢰 게이트] lgbm_combined(exp_034) + lap_gap/is_consec_lap.
+# add_lgbm_combined_lapgap = add_realmlp_features + lap_gap(직전 관측랩까지 간격)
+#   + is_consec_lap(gap==1, delta 신뢰 플래그). 누수 0: 그룹 내 과거행 shift(1)만 참조.
+# 노브는 exp_034(lgbm_combined)와 동일 → 신 피처 2개의 순효과(ΔOOF AUC)만 측정.
+feature_builder: add_lgbm_combined_lapgap
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

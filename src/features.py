@@ -185,6 +185,341 @@ def add_driver_hash_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_lap_gap(df: pd.DataFrame) -> pd.DataFrame:
+    """`lap_gap` + `is_consec_lap` — sparse 샘플링된 inherited per-lap delta 의 신뢰도 게이트.
+
+    합성데이터가 LapNumber 를 sparse 샘플링(train consec_frac 0.3195, gap median 3, eda.md)
+    하면서 `LapTime_Delta`·`Cumulative_Degradation`·`Position_Change` 같은 inherited per-lap
+    delta 가 행마다 1랩차(신뢰) vs 3~4랩차(훼손)로 섞인다. `lap_gap` 을 주면 트리가
+    "lap_gap split → 그 안에서 delta split" 식으로 delta 신뢰도를 **조건부** 학습한다.
+
+    누수 0: 각 (Race,Year,Driver) 그룹을 LapNumber 오름차순 정렬 후 그룹 내 `shift(1)`
+    (직전 **과거** 관측행)만 참조한다. 미래/다음 랩 간격은 보지 않는다. groupby 결과는
+    원본 index 에 정렬해 되돌리므로 행 순서/index 불변(load_train/test/source 모두 unique
+    RangeIndex 라 안전).
+
+    Args:
+        df: build_features 적용 후 DataFrame ((Race,Year,Driver), LapNumber 컬럼 포함).
+
+    Returns:
+        lap_gap(float32, 첫 관측행 sentinel=0) · is_consec_lap(int8, lap_gap==1) 가
+        추가된 복사본.
+    """
+    out = df.copy()
+    # LapNumber 오름차순 정렬 후 그룹 내 직전 관측행과의 차 → 원본 index 로 재정렬해 복원.
+    order = out.sort_values(config.GROUP_KEYS + ["LapNumber"], kind="mergesort").index
+    ln = out.loc[order, "LapNumber"]
+    prev = ln.groupby([out.loc[order, k] for k in config.GROUP_KEYS], observed=True).shift(1)
+    gap = (ln - prev).reindex(out.index)  # 원본 행 순서 복원
+    out["lap_gap"] = gap.fillna(0.0).astype("float32")  # 첫 관측행(직전 없음) → sentinel 0
+    out["is_consec_lap"] = (out["lap_gap"] == 1.0).astype("int8")
+    return out
+
+
+def add_lgbm_combined_lapgap(df: pd.DataFrame) -> pd.DataFrame:
+    """lgbm_combined(exp_034) FE + lap_gap/is_consec_lap — sparse delta 신뢰 게이트 추가.
+
+    add_realmlp_features(i_* 상호작용 5종 + cross + Stint_cat) 위에 `lap_gap`/`is_consec_lap`
+    (add_lap_gap)을 더한다. conf 노브(target_encode/drop_cols/extra_categorical_cols)는
+    exp_034(lgbm_combined)와 동일하게 두어 신 피처 2개의 순효과만 측정한다.
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        add_realmlp_features + lap_gap/is_consec_lap 가 추가된 복사본.
+    """
+    return add_lap_gap(add_realmlp_features(df))
+
+
+def _group_past_expanding(
+    df: pd.DataFrame, value_col: str, agg: str
+) -> pd.Series:
+    """그룹(Race,Year,Driver) 내 LapNumber 오름차순으로 **과거 관측행만** expanding 집계.
+
+    누수 0: shift(1) 후 expanding 이므로 **현재 행 직전까지의 과거**만 본다.
+    그룹별로 LapNumber 오름차순 정렬해 집계한 뒤 원본 index 로 복원한다
+    (load_train/test/source 모두 unique RangeIndex → 행순서/index 불변).
+
+    Args:
+        df: GROUP_KEYS + LapNumber + value_col 을 포함한 DataFrame.
+        value_col: 집계 대상 수치 컬럼.
+        agg: 'mean'|'std'|'max'|'min'|'sum' 중 하나.
+
+    Returns:
+        원본 index 정렬 Series (첫 행 등 과거 없음 → NaN).
+    """
+    order = df.sort_values(config.GROUP_KEYS + ["LapNumber"], kind="mergesort").index
+    val = df.loc[order, value_col]
+    grp = [df.loc[order, k] for k in config.GROUP_KEYS]
+    shifted = val.groupby(grp, observed=True).shift(1)  # 현재행 제외(과거만)
+    g = shifted.groupby(grp, observed=True).expanding()
+    res = getattr(g, agg)().reset_index(level=list(range(len(config.GROUP_KEYS))), drop=True)
+    return res.reindex(df.index)
+
+
+def _group_sorted_cumcount(df: pd.DataFrame, extra_keys: list[str] | None = None) -> pd.Series:
+    """그룹 내 LapNumber 오름차순 cumcount (= 현재행까지의 과거 관측 수, 0-based).
+
+    ⚠️ train 의 그룹은 원본 행 순서가 LapNumber 정렬이 아니므로(86% 미정렬),
+    cumcount 를 원본 순서로 쓰면 미래행을 끌어오는 누수가 된다. 반드시 LapNumber
+    오름차순 정렬 후 cumcount 하고 원본 index 로 복원한다(과거만 참조).
+
+    Args:
+        df: GROUP_KEYS + LapNumber 포함 DataFrame.
+        extra_keys: 추가 그룹 키(예: ['Stint']).
+
+    Returns:
+        원본 index 정렬 cumcount(int) Series.
+    """
+    keys = config.GROUP_KEYS + (extra_keys or [])
+    order = df.sort_values(keys + ["LapNumber"], kind="mergesort").index
+    grp = [df.loc[order, k] for k in keys]
+    cc = df.loc[order, "LapNumber"].groupby(grp, observed=True).cumcount()
+    return cc.reindex(df.index)
+
+
+def _group_past_cumsum(df: pd.DataFrame, series: pd.Series) -> pd.Series:
+    """그룹 내 LapNumber 오름차순 **과거 관측행만**의 누적합(shift(1) 후 cumsum).
+
+    Args:
+        df: GROUP_KEYS + LapNumber 포함 DataFrame.
+        series: df.index 정렬된 누적 대상 Series.
+
+    Returns:
+        원본 index 정렬 누적합 Series (첫 행 → NaN).
+    """
+    order = df.sort_values(config.GROUP_KEYS + ["LapNumber"], kind="mergesort").index
+    val = series.loc[order]
+    grp = [df.loc[order, k] for k in config.GROUP_KEYS]
+    csum = val.groupby(grp, observed=True).shift(1).groupby(grp, observed=True).cumsum()
+    return csum.reindex(df.index)
+
+
+def add_heavy_fe(df: pd.DataFrame) -> pd.DataFrame:
+    """Heavy FE 배치1 — 다수 시계열/횡단면 파생을 일괄 생성 (ADR #035).
+
+    add_realmlp_features(i_* 상호작용 + cross + Stint_cat) 위에 5개 테마의 신호를
+    추가한다. **개당 마진 판정 안 함** — 집합 OOF + feature importance 로 판정.
+
+    누수안전 2종 규칙:
+      - **시계열 그룹 파생**(테마 A~D 대부분): (Race,Year,Driver) 그룹을 LapNumber
+        오름차순 정렬 후 `shift(1)` + expanding/cumsum/cumcount = **과거 관측행만**.
+        미래행/전체-그룹 통계 금지. 미래행 마스킹 불변성 검증 대상.
+      - **횡단면 그룹 통계**(테마 E + tyrelife_rank): 타깃 미사용(피처컬럼 중앙값/순위)
+        이라 train 전체로 계산해 train/test 동일맵 적용해도 누수 아님(정규화 상수).
+        Driver/Compound 별 중앙값은 대회 train 으로 전역 1회 산출(add_driver_freq 패턴).
+
+    신피처는 전부 float32/int8/int16, 과거 없음 첫 행 등은 sentinel 0.
+
+    Args:
+        df: build_features 적용 후 DataFrame (원본 컬럼 포함).
+
+    Returns:
+        add_realmlp_features + 배치1 파생이 추가된 복사본.
+    """
+    from src import data  # 지연 임포트(순환 회피)
+
+    out = add_realmlp_features(df)
+    out = add_lap_gap(out)  # lap_gap, is_consec_lap (재사용)
+
+    grp_obj = [out[k] for k in config.GROUP_KEYS]
+
+    # ===== A. sparsity / 신뢰 마스크 =====
+    # 그룹내 과거 관측 랩 수 (LapNumber 정렬 cumcount = 0-based 과거수). 원본순서 cumcount 는
+    # 그룹 86% 미정렬이라 누수 → _group_sorted_cumcount 로 정렬 후 산출.
+    out["laps_obs_so_far"] = _group_sorted_cumcount(out).astype("int32")
+    out["is_first_in_group"] = (out["laps_obs_so_far"] == 0).astype("int8")
+    # ⚠️ is_last_in_group 은 정의상 미래(그룹 전체 크기)를 알아야 결정 → 누수. 배치1 제외.
+
+    # ===== B. 포지션 동역학 (expanding, 과거만) =====
+    pc = out["Position_Change"]
+    out["pos_change_cumsum"] = _group_past_cumsum(out, pc)
+    out["pos_change_exp_mean"] = _group_past_expanding(out, "Position_Change", "mean")
+    out["pos_change_exp_std"] = _group_past_expanding(out, "Position_Change", "std")
+    out["pos_gained_cum"] = _group_past_cumsum(out, pc.clip(lower=0))
+    out["pos_lost_cum"] = _group_past_cumsum(out, pc.clip(upper=0))
+    out["pos_exp_min"] = _group_past_expanding(out, "Position", "min")
+    out["pos_exp_max"] = _group_past_expanding(out, "Position", "max")
+    out["pos_range_so_far"] = out["pos_exp_max"] - out["pos_exp_min"]
+
+    # ===== C. 페이스 / 열화 (expanding 집계, sparsity-safe) =====
+    out["laptime_exp_mean"] = _group_past_expanding(out, "LapTime (s)", "mean")
+    out["laptime_exp_std"] = _group_past_expanding(out, "LapTime (s)", "std")
+    out["laptime_delta_exp_mean"] = _group_past_expanding(out, "LapTime_Delta", "mean")
+    out["cumdeg_exp_mean"] = _group_past_expanding(out, "Cumulative_Degradation", "mean")
+    out["cumdeg_exp_max"] = _group_past_expanding(out, "Cumulative_Degradation", "max")
+    # 그룹 expanding-first = 과거 최초 관측값 = 첫 관측행 값(상수). transform('first')는 정렬 무관 그룹 첫값.
+    order = out.sort_values(config.GROUP_KEYS + ["LapNumber"], kind="mergesort").index
+    first_deg = (
+        out.loc[order, "Cumulative_Degradation"]
+        .groupby([out.loc[order, k] for k in config.GROUP_KEYS], observed=True)
+        .transform("first")
+        .reindex(out.index)
+    )
+    out["cumdeg_vs_first"] = (out["Cumulative_Degradation"] - first_deg).astype("float32")
+
+    # ===== D. 타이어 / 스틴트 =====
+    # (group,Stint) 내 LapNumber 정렬 cumcount — 원본순서 cumcount 는 누수라 정렬 후 산출.
+    out["stint_lap_count"] = _group_sorted_cumcount(out, ["Stint"]).astype("int32")
+    # (group,Stint) expanding max TyreLife — 과거만(shift1).
+    order_s = out.sort_values(config.GROUP_KEYS + ["Stint", "LapNumber"], kind="mergesort").index
+    grp_s = [out.loc[order_s, k] for k in config.GROUP_KEYS] + [out.loc[order_s, "Stint"]]
+    tl_s = out.loc[order_s, "TyreLife"].groupby(grp_s, observed=True).shift(1)
+    tmax = tl_s.groupby(grp_s, observed=True).expanding().max()
+    tmax = tmax.reset_index(level=list(range(len(grp_s))), drop=True).reindex(out.index)
+    out["tyrelife_exp_max_in_stint"] = tmax.fillna(0.0).astype("float32")
+    # 그룹내 누적 distinct Stint 수 — LapNumber 정렬 후 새 stint 진입(직전과 다름) cumsum.
+    # 원본순서 shift 는 누수 → 정렬 기반. 현재행 stint 포함(현재 stint 가 몇 번째인지) = 과거+현재 관측.
+    order_n = out.sort_values(config.GROUP_KEYS + ["LapNumber"], kind="mergesort").index
+    grp_n = [out.loc[order_n, k] for k in config.GROUP_KEYS]
+    st_n = out.loc[order_n, "Stint"]
+    new_stint = (st_n != st_n.groupby(grp_n, observed=True).shift(1)).astype("int8")
+    out["n_obs_stints_so_far"] = (
+        new_stint.groupby(grp_n, observed=True).cumsum().reindex(out.index).astype("int16")
+    )
+    # 횡단면: (Race,Year,Compound) 내 TyreLife 백분위 rank (타깃 무관).
+    out["tyrelife_rank_in_race_compound"] = (
+        out.groupby([out["Race"], out["Year"], out["Compound"]], observed=True)["TyreLife"]
+        .rank(pct=True)
+        .astype("float32")
+    )
+
+    # ===== E. 상대 / 페이즈 (횡단면, train 전역 중앙값, 타깃 무관) =====
+    tr = data.load_train()
+    drv_med = tr.groupby("Driver", observed=True)["LapTime (s)"].median()
+    race_med = tr.groupby(["Race", "Year"], observed=True)["LapTime (s)"].median()
+    comp_med = tr.groupby("Compound", observed=True)["TyreLife"].median()
+    out["laptime_vs_driver_median"] = (
+        out["LapTime (s)"] - out["Driver"].astype(object).map(drv_med)
+    ).astype("float32")
+    race_key = list(zip(out["Race"].astype(object), out["Year"]))
+    out["laptime_vs_race_median"] = (
+        out["LapTime (s)"].to_numpy() - pd.Series(race_key).map(race_med).to_numpy()
+    ).astype("float32")
+    out["tyrelife_vs_compound_median"] = (
+        out["TyreLife"] - out["Compound"].astype(object).map(comp_med)
+    ).astype("float32")
+
+    # ===== NaN/dtype 정리: 과거없음(첫행) sentinel 0, float32 통일 =====
+    new_cols = [
+        "pos_change_cumsum", "pos_change_exp_mean", "pos_change_exp_std",
+        "pos_gained_cum", "pos_lost_cum", "pos_exp_min", "pos_exp_max",
+        "pos_range_so_far", "laptime_exp_mean", "laptime_exp_std",
+        "laptime_delta_exp_mean", "cumdeg_exp_mean", "cumdeg_exp_max",
+        "laptime_vs_driver_median", "laptime_vs_race_median",
+        "tyrelife_vs_compound_median",
+    ]
+    for c in new_cols:
+        out[c] = out[c].fillna(0.0).astype("float32")
+    out["tyrelife_rank_in_race_compound"] = (
+        out["tyrelife_rank_in_race_compound"].fillna(0.0).astype("float32")
+    )
+    return out
+
+
+def add_heavy_fe_xsec(df: pd.DataFrame) -> pd.DataFrame:
+    """Heavy FE 배치2 — 횡단면(cross-sectional) group-relative 피처만 (ADR #035 prune).
+
+    배치1(add_heavy_fe, 25개)에서 importance 상위에 든 **유일한 테마 = 횡단면
+    group-relative** 만 추려 확장한다(시계열 expanding/cumsum/mask 는 노이즈로 기각).
+    횡단면 = 그룹 내 어떤 피처값의 **상대 위치(rank/percentile)** 또는 **그룹 중앙값
+    대비 차이(vs-median)**. 트리가 단일 row 로 그룹 전체 분포를 재구성 불가 = 비흡수.
+
+    add_realmlp_features(i_* 상호작용 5종 + cross + Stint_cat) 위에 11개 횡단면 신호를
+    추가한다. 개당 마진 판정 안 함 — Kaggle 집합 OOF A/B + importance 로 메인이 판정.
+
+    누수안전:
+      - **타깃 미사용** — 전부 피처 컬럼의 그룹 통계(rank/중앙값)일 뿐 → fold-내 OOF
+        불필요, 누수 아님. 시계열·shift·expanding·mask **전혀 없음** → 미래행 마스킹은
+        N/A(타깃·시계열 미참조).
+      - **각 df 독립 계산** — train rank/median 은 train 내에서, test 는 test 내에서
+        산출(정규화 상수). rank(pct=True)는 그룹 크기로 정규화돼 그룹크기 무관.
+      - 단변량 AUC<0.95 로 누수 sanity (scripts/verify_xsec_leak.py).
+      - index 복원 안전: groupby().rank/transform 은 원본 index 정렬 유지
+        (load_train/test/source 모두 unique RangeIndex).
+
+    신피처(전부 float32):
+      [검증된 4개] tyrelife_rank_in_race_compound · laptime_vs_race_median ·
+        laptime_vs_driver_median · tyrelife_vs_compound_median
+      [확장 8개] tyrelife_pct_in_race · position_pct_in_race ·
+        cumdeg_rank_in_race_compound · laptime_rank_in_race ·
+        laptime_delta_vs_race_median · pos_vs_driver_median · tyrelife_vs_driver_median
+
+    NaN(그룹 단일행 등): rank 류 sentinel 0.5(중앙), vs-median 류 sentinel 0.0.
+
+    Args:
+        df: build_features 적용 후 DataFrame (원본 컬럼 포함).
+
+    Returns:
+        add_realmlp_features + 횡단면 11개 파생이 추가된 복사본.
+    """
+    out = add_realmlp_features(df)
+
+    race_grp = [out["Race"], out["Year"]]
+    race_comp_grp = [out["Race"], out["Year"], out["Compound"]]
+
+    # ===== 1. rank / percentile (그룹 내 상대 위치, pct=True 로 그룹크기 무관) =====
+    out["tyrelife_rank_in_race_compound"] = (
+        out.groupby(race_comp_grp, observed=True)["TyreLife"].rank(pct=True)
+    )
+    out["tyrelife_pct_in_race"] = (
+        out.groupby(race_grp, observed=True)["TyreLife"].rank(pct=True)
+    )
+    out["position_pct_in_race"] = (
+        out.groupby(race_grp, observed=True)["Position"].rank(pct=True)
+    )
+    out["cumdeg_rank_in_race_compound"] = (
+        out.groupby(race_comp_grp, observed=True)["Cumulative_Degradation"].rank(pct=True)
+    )
+    out["laptime_rank_in_race"] = (
+        out.groupby(race_grp, observed=True)["LapTime (s)"].rank(pct=True)
+    )
+
+    # ===== 2. vs-median (그룹 중앙값 대비 차이, transform 으로 broadcast) =====
+    out["laptime_vs_race_median"] = (
+        out["LapTime (s)"]
+        - out.groupby(race_grp, observed=True)["LapTime (s)"].transform("median")
+    )
+    out["laptime_vs_driver_median"] = (
+        out["LapTime (s)"]
+        - out.groupby("Driver", observed=True)["LapTime (s)"].transform("median")
+    )
+    out["tyrelife_vs_compound_median"] = (
+        out["TyreLife"]
+        - out.groupby("Compound", observed=True)["TyreLife"].transform("median")
+    )
+    out["tyrelife_vs_driver_median"] = (
+        out["TyreLife"]
+        - out.groupby("Driver", observed=True)["TyreLife"].transform("median")
+    )
+    out["laptime_delta_vs_race_median"] = (
+        out["LapTime_Delta"]
+        - out.groupby(race_grp, observed=True)["LapTime_Delta"].transform("median")
+    )
+    out["pos_vs_driver_median"] = (
+        out["Position"]
+        - out.groupby("Driver", observed=True)["Position"].transform("median")
+    )
+
+    # ===== NaN/dtype 정리 =====
+    rank_cols = [
+        "tyrelife_rank_in_race_compound", "tyrelife_pct_in_race",
+        "position_pct_in_race", "cumdeg_rank_in_race_compound",
+        "laptime_rank_in_race",
+    ]
+    median_cols = [
+        "laptime_vs_race_median", "laptime_vs_driver_median",
+        "tyrelife_vs_compound_median", "tyrelife_vs_driver_median",
+        "laptime_delta_vs_race_median", "pos_vs_driver_median",
+    ]
+    for c in rank_cols:
+        out[c] = out[c].fillna(0.5).astype("float32")  # 단일행 그룹 → 중앙 순위
+    for c in median_cols:
+        out[c] = out[c].fillna(0.0).astype("float32")  # 단일행 그룹 → 중앙값=자기값, 차=0
+    return out
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """모델에 투입할 피처 컬럼 목록을 반환한다 (id, target 제외).
 

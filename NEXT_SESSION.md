@@ -2,54 +2,48 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT = GitHub Issues, 상시 가이드 = `CLAUDE.md`, 지식 = `docs/wiki/`.
 
-_최종 갱신: 2026-06-06 (**TabICL 5번째 멤버 채택 → stack_v9 Private 0.95400 신기록**. 이후 **축① GBDT 코어 분기(interaction_constraints) park** — 분기 성공해도 스택 전이 0. **분산 레버 천장 실측**: 5멤버 OOF 잔차상관 → **N_eff=1.03 / 분산감소 천장 −2.6%** = 모델 다양성 레버 소진. **축②/③(새 모델) 보조 강등, 임계경로 = FE 신호 레버로 재배치.** 커밋 `643bba3`.)_
+_최종 갱신: 2026-06-06 (**FE 종합 음성** — Heavy FE 포함 **FE 7전 전부 net-negative**[개별+다양성], **분산 레버도 소진**[Driver-drop corr 0.99] → 신호·분산 양축 포화. **다음 레버 미정 = 사용자 결정**[ADR #036 후보 A/B/C/D]. **Kaggle CPU 오프로드 워크플로 확립·검증**. **eda_05 원본vs train 합성데이터 분석**. ADR #035·#036.)_
 
-## 🟢 현재 최고 — stack_v9 (Private 0.95400 신기록)
-- **🏆 LB·OOF 최고**: **stack_v9** = LGBM exp_034 + XGB exp_043 + RealMLP exp_046 + CatBoost exp_025 + **TabICL exp_071** (logistic). **meta-OOF 0.954357 / Private 0.95400**(제출, ADR #033). 파일 `stack_v9_5mem_tabicl_logistic.csv`.
-- **목표 Private 0.95452** → 잔여 격차 **+0.00052**. 상위 10% 라인, 계속 도전(마무리 없음).
+## 🟢 현재 최고 — stack_v9 (Private 0.95400, 불변)
+- **🏆 stack_v9** = LGBM exp_034 + XGB exp_043 + RealMLP exp_046 + CatBoost exp_025 + TabICL exp_071 (logistic). meta-OOF **0.954357 / Private 0.95400**. 파일 `stack_v9_5mem_tabicl_logistic.csv`.
+- **목표 0.95452 → 잔여 +0.00052.** 상위 10% 라인. (이번 세션 점수 변동 없음 — FE/디코릴레이션 시도 전부 무기여)
 
-## 🔴 핵심 발견 (이번 세션) — 분산 레버 천장 실측 → 전략 전환
-> `scripts/diag_resid_corr.py` (5멤버 OOF **잔차상관** 진단, [[decisions]] #034 / [[stacking_plan]] §9.6)
-- **유효 독립 모델 수 N_eff = 1.03** (오차상관 평균 0.967, K=5). GBDT×2+RealMLP+CatBoost+TabICL = 5 아키텍처인데 **오차 공간 독립성은 1.03개**. 최선 쌍(RealMLP↔CatB 0.956)도 N_eff 1.02.
-- **평균화 분산감소 이론천장 = −2.6%**. 스택이 best single 대비 이미 +0.001 먹음 = **천장 거의 소진**.
-- **오차 분포**: 79%는 풀림(오차 0.065), 전 오차가 **경계영역 20.7%(오차 0.433)에 집중**. 그중 **합의-오답 3.19%**(5모델 만장일치 오답) = 환원불가 바닥(라벨노이즈/전략 서프라이즈).
-- **결론**: 잔여 +0.00052는 **분산 공간에 없음**. 모델 다양성 레버(축①/②/③) 전부 동일 천장 → **임계경로 = FE 신호 레버**.
+## 🔴 핵심 발견 (이번 세션) — FE·분산 양축 포화
+> 상세 검증로그 = `docs/feature_engineering.md`, 결정 = [[decisions]] #035·#036, 데이터분석 = `docs/eda.md` §7
+- **FE 7전 전부 net-negative**: prevstint/pitwin/relhist(재정규화 −0.0002씩)·poschange(시계열 −0.0003)·is_consec_lap(−0.0002)·**Heavy FE 25일괄 −0.00130**·**횡단면 prune 11개 −0.00038**. 횡단면은 개별뿐 아니라 **다양성도 실패**(잔차상관 LGBM 0.9945↑, 스택 add +0.00001). importance 있어도(tyrelife_rank gain402) 무기여 = **`Driver`(gain11450) 지배 + GBDT가 raw에서 등가 추출**.
+- **Driver-drop XGB 디코릴레이션 실패**(1st-place 아이디어): corr 0.99 불변, 스택 add +0.00002. 변산 레버 = 피처-ablation으로도 소진(N_eff 1.03 재확인).
+- **eda_05(원본 vs train)**: 합성이 **LapNumber sparse 샘플링**(연속률 0.99→0.32, gap3~4랩)·**Driver 31→887 합성ID**(실제 6.9%)·**inherited delta 훼손**(`LapTime_Delta` dense→sparse). → 시계열 FE가 노이즈인 이유 규명. eda_03/04 합의-오답 ~3% 중 상당부 환원불가(라벨노이즈/2023).
+- **결론**: 잔여 +0.00052는 **신호(FE)·분산 양축 밖** 가능성 = 현 접근의 베이즈-AUC 근처.
 
-## 🔜 다음 할 일 (우선순위) — FE 신호 레버로 전환
-1. **경계영역 3.2% 합의-오답 케이스 EDA**(최우선, 가장 EV 높은 진입점). `eda-explorer`로 5모델 만장일치 오답(`std<0.05 & |y−p̄|>0.5`) 케이스 프로파일링:
-   - 어떤 상황에서 전원 틀리나(드라이버/컴파운드/랩 구간/포지션 변화/세이프티카 정황?)
-   - 현 피처가 그 패턴 못 가르는지 확인 → **가르면** F1 도메인 피처 후보 설계, **못 가르면**(환원불가) 목표가 외부데이터/킬러피처 의존이라는 결론 → 방향 재확인.
-2. **F1 도메인 피처 설계**(1의 결과 의존): 피트윈도 거리(스틴트/컴파운드별 통상 피트랩까지)·갭 다이내믹스(앞차 간격→언더컷)·스틴트상대 열화율 등. GBDT FE 게이트(#026) 적용 — 2피처 비축정렬 상호작용만.
-3. **(보조·병렬만)** 축②/③(새 모델 멤버): 동일 천장 안이라 주스레드 금지. 싼 것·병렬만(FTT full 이미 준비됨).
-- ⚠️ **과몰입 가드**(kill_criterion·천장 게이트). GPU 발사 전 **피처 confirm**(메모리). 노트북 빌드=[[notebook_conventions]].
+## 🔜 다음 할 일 — **레버 결정 대기(사용자)**, ADR #036 후보
+- **(A) 대규모 Heavy FE(200~400)+feature selection** — 우리는 11~25개만 시도, 스케일 부족 가능성(1st place 규모 미도달).
+- **(B) 훼손 고-importance 피처 교정** — `LapTime_Delta`(gain879, imp 3위)를 **gap-정규화 재계산**(값 교정; 플래그 is_consec_lap은 실패, 값 교정은 미시도).
+- **(C) 외부데이터** — 1st place 실제 돌파구(원본 추가 + Driver 분포 adversarial 대응). [[external_data_augmentation]] 재검토.
+- **(D) stack_v9(Private 0.95400, 상위10%) 견고화/마무리** (seed-avg robustness 등).
+- ⚠️ **어시스턴트 read**: FE 7전+분산 소진 → (C)/(D) EV 높음. 단 **결정 주체=사용자**(FE 미소진 입장 존중, [[fe-lever-not-exhausted]]). 규칙대로 보고+의견만, 임의 발사 금지.
 
 ### 🅿️ Parked / 결론 (재시도 금지)
-- **축① GBDT 코어 분기(#034)** — interaction_constraints corr 0.9928→0.9753 분기 성공해도 swap −0.000086/add +0.000001(앵커 클라우드 흡수). monotone(#072)은 corr 0.9919로 분기 실패. DART는 train.py `best_iteration` 슬라이싱과 비호환.
-- **TabM 5번째(#029→#031)** — 7레버 소진, 개별0.951↔corr0.977 고정(동화, PLR-MLP 구조 수렴).
-- **RealMLP n_refit=1(#032)** — 개별 +0.00035나 corr0.9947(복제)→스택 −0.00004. n_refit은 비포화 새 NN축에만 가치.
-- **CatBoost 전부 소진** — HP튜닝(#030)·Driver hash·Driver-TE 분리(exp_067)·ctr 정규화(exp_068). exp_025 default 유지.
-- **ep/lr(exp_056, #029)** — 개별+0.00038이나 스택 −0.000008(RealMLP 포화).
-- **seed-avg(#028)** — 스택 중립. 최종 robustness용만.
+- **FE 증분 전부 흡수**(검증로그): 재정규화(prevstint·pitwin·relhist)·시계열(poschange·is_consec_lap)·Heavy 25·횡단면 11. 시계열=노이즈(sparsity), 횡단면 rank만 importance 상위지만 OOF·스택 무기여.
+- **Driver-drop XGB 디코릴레이션**(#035, corr 0.99). 변산 천장(#034 N_eff 1.03) 재확인.
+- (이전 세션) 축① GBDT 코어분기·TabM 5번째·RealMLP n_refit=1·CatBoost 전부·ep/lr·seed-avg — [[decisions]] #028~#034.
 
-## ⚙️ 인프라·운영 (GPU 실행 SSOT 3종)
-- **Kaggle T4 헤드리스 = [[kaggle_jobs]]**: `kernels push/output`, 동시 GPU ≥2, slug=title 케밥, status API 500→`list --mine`. **wandb=false 유지**(secret attach 미유지).
-- **Lightning L4 Job = [[lightning_jobs]]**: `.venv` 그대로 GPU, teamspace `paraise/ml`·studio `predicting-f1-pit-stops`. wandb=`-e WANDB_API_KEY`(online true).
-- **Colab L4 = [[colab_jobs]]**(T4 OOM·L4 24GB 필요 모델, 예 TabICL): Kaggle API로 데이터/src→`src.train_*`. **Colab Secrets**(KAGGLE_*·WANDB_API_KEY). wandb online true. 노트북=`kaggle/<exp_id>.ipynb`.
-- **wandb 방침([[kaggle-gpu-wandb-on]])**: Colab(UI)·Lightning=true / Kaggle 헤드리스=false.
-- 스태킹: `uv run python -m src.stack --members ... --tag NAME`(logistic best). 잔차상관 진단: `scripts/diag_resid_corr.py`.
+## ⚙️ 인프라·운영
+- **🆕 Kaggle CPU 오프로드 확립·검증**([[feature-smith-kaggle-cpu]]): feature-smith 풀 5-fold A/B를 로컬(4코어 3분할) 대신 Kaggle CPU 커널로. `enable_gpu=false`+`push_src_dataset.sh version`+`kernels push`. **Kaggle-A==로컬 exp_034 0.953818 소수6자리 재현**(워크플로 신뢰), ~30분·로컬점유0·동시커널·GPU쿼터 미소모. 노트북 `kaggle/{fe_lapgap,heavy_fe,xsec,xgb_nodriver}_cpu*.ipynb`(재사용 템플릿). **완료 모니터** = `/tmp/kaggle_*_monitor.sh`(B OOF 파일 출현 폴링→자동회수, status500 회피). ⚠️ A·B 같은 커널(환경일치=Δ클린).
+- **Δ측정 환경 일치 필수**: ±0.0002 스케일이라 A(로컬)·B(Kaggle) 혼합 금지.
+- 기존 GPU SSOT 3종 유지: Kaggle T4 [[kaggle_jobs]]·Lightning L4 [[lightning_jobs]]·Colab L4 [[colab_jobs]].
+- 스태킹: `uv run python -m src.stack --members ... --tag NAME`(logistic). 잔차상관: `scripts/diag_resid_corr.py`.
 
 ## ✅ 완료 (2026-06-06 세션)
-- **TabICL 5번째 멤버 채택**(ADR #033): exp_071 raw full(개별 0.949358)→ stack_v9 OOF 0.954357 / **Private 0.95400 신기록**. 범주형 raw 자동인코딩 = cat.codes와 등가(가설 기각, Δ3e-6).
-- **축① GBDT 코어 분기 실행·park**(ADR #034): exp_072 monotone·exp_073/074/075 interaction_constraints. swap/add 게이트 둘 다 미달.
-- **분산 레버 천장 실측**(`scripts/diag_resid_corr.py`, ADR #034): N_eff 1.03 / 천장 −2.6% → 임계경로 FE 재배치.
-- **실험 회고 docs 3편**: `exp_037_046_stackv7_track.md`·`exp_047_068_nn_strengthen_parked.md`·`exp_069_071_nn_new_axis.md`. stacking_plan §9 전면 갱신.
-- GitHub: #13 닫음(축① park), #14/#15 보조 강등, #10 갱신.
-- 커밋: `ab657dc`(stack_v9·축① 결과) → `643bba3`(분산 천장 진단·재배치).
+- **EDA 3편**: eda_03/04(합의-오답 오차분석)·eda_05(원본vs train 합성 변형). `docs/eda.md` §7 추가.
+- **FE 7전 실측**(Kaggle CPU): 재정규화3·시계열2·Heavy25·횡단면11. 빌더 `src/features.py`(add_lap_gap·add_heavy_fe·add_heavy_fe_xsec, **전부 rejected 문서화**)·conf `lgbm_combined_{lapgap,heavy,xsec}.yaml`·검증 `scripts/verify_*_leak.py`. 누수검증 전부 통과.
+- **Driver-drop XGB**(exp_xgb_nodriver, conf xgb_combined_nodriver). 디코릴레이션 실패.
+- **Kaggle CPU 워크플로 확립**(첫 CPU 이관).
+- **eda-explorer 노트북 컨벤션 규칙 추가**(`;` 다중문·논리블록 빈줄).
+- ADR **#035**(Driver-drop 기각+Heavy FE 전환)·**#036**(Heavy FE 종합 음성). `docs/feature_engineering.md` 검증로그·원칙(sparsity가드·흡수게이트) 갱신.
 
 ## 🔗 열린 이슈
-- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — stack_v9(Private 0.95400). 잔여=**FE 신호 레버→목표 0.95452**.
-- [#14](https://github.com/buzziru/F1_Pit_Stops/issues/14) [model] 축② 새 앵커 멤버 — **보조 강등**(천장 소진).
-- [#15](https://github.com/buzziru/F1_Pit_Stops/issues/15) [model] 축③ FTT full — **보조 강등**.
-- [#11](https://github.com/buzziru/F1_Pit_Stops/issues/11) [tuning] Optuna — 완료(park). [#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) RealMLP FE — exp_024 채택. [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생 피처 — parked(#010). [#13](https://github.com/buzziru/F1_Pit_Stops/issues/13) 축① — **닫음**(park).
+- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — stack_v9 Private 0.95400. 잔여=**레버 결정(ADR #036 A/B/C/D)→목표 0.95452**.
+- [#14](https://github.com/buzziru/F1_Pit_Stops/issues/14)·[#15](https://github.com/buzziru/F1_Pit_Stops/issues/15) 축②/③ 새 멤버 — 보조 강등(천장 소진).
+- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생 피처 — FE 7전 음성으로 사실상 종결(재오픈은 ADR #036 (A)/(B) 시).
 
 repo: https://github.com/buzziru/F1_Pit_Stops
