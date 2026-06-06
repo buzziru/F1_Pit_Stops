@@ -20,6 +20,7 @@ Kaggle Grandmaster 수준의 ML 엔지니어이자 프로젝트 아키텍트.
 3. **실행**:
    - **베이스라인·중간 실험은 로컬**에서 `.py` 중심 (`python -m src.train`)
    - 대형 모델(XGB/CatBoost) · 장시간 튜닝이 필요해지면 **Kaggle Notebook(GPU)** 사용
+   - GPU 실행 SSOT: **Kaggle T4**=`docs/wiki/kaggle_jobs.md` · **Lightning L4 Job**=`lightning_jobs.md` · **Colab L4**(T4 OOM 모델, 예: TabICL)=`colab_jobs.md`
    - ⚠️ Kaggle 은 노트북 환경이므로 `src/` 코드를 **`.ipynb` 로 변환**해 올려야 한다 (또는 `src/` 를 Kaggle Dataset 으로 push 후 import). 변환 시점·방법은 그때 별도 정리.
 4. **실험 결과**: `experiments/logs/<exp_id>.json` 구조화 로그 (+ W&B 는 아래 "실험 추적" 참조)
 
@@ -89,6 +90,7 @@ data/           # train/test/sample_submission  ← git 제외
 ## 코딩 컨벤션
 - **Python 3.11 고정** (`.python-version`, Kaggle 노트북과 동일). ⚠️ uv 가 최신(3.14 등)을 잡으면 Hydra `@hydra.main` 등이 깨지므로 pin 유지 (decisions #008). 의존성 관리 **`uv`** (`uv sync` / `uv run`)
 - **타입힌트 필수**, **Google 스타일 docstring**, 함수당 ~50줄 권장
+- **노트북(Kaggle/Colab) 작성 규칙은 `docs/wiki/notebook_conventions.md`** — `;` 다중문 금지·논리 블록 빈 줄·셀당 단일 책임·full 전 소규모 fast-fail·의존성 누락 금지.
 - 하드코딩 금지 — 경로/시드/컬럼은 `src/config.py` 참조
 - **재현성**: 모든 실험은 `seed_everything()` + 커밋 해시 로깅(`utils.log_experiment` 자동 기록)
 - **LGBM 경로 패리티 (필수)**: `src/train.py`(LGBM)는 ADR(회귀 안전)대로 `train_common` 과 통합 안 함 → 공통 노브가 LGBM 에 누락되는 divergence 버그 반복(feature_builder·extra_categorical_cols·max_folds, ADR #023). `train_common.py`/`train.py` 수정 시 **`uv run python scripts/check_knob_parity.py`** 로 노브 패리티 PASS 확인.

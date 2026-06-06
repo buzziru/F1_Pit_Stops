@@ -1,6 +1,18 @@
 # TabM — 모델별 SSOT (피처 전략 · 성능 개선 5번째 멤버 추가)
 
-> 2026-06-05 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **계획(보류 — cat-tune·ep/lr 후 착수)** · 관련 [[decisions]] #029(TabM park·원인)·#021(RealMLP v2)·#025(동화)·#017(인코딩 분기) · 실행 [[kaggle_jobs]]/[[lightning_jobs]]
+> 2026-06-05 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **park 확정** ([[decisions]] #031 — 정식 개선 7레버 소진, corr<0.97 불가) · 관련 [[decisions]] #029·#031·#021·#025·#017 · 실행 [[kaggle_jobs]]/[[lightning_jobs]]
+
+## park 결론 (#031, 2026-06-05)
+**7레버 소진해도 개별 0.951↔corr 0.977~0.983 고정** → corr<0.97 & 개별 0.951 동시충족 불가. progression: exp_058(0.948/0.965)→exp_061 pwl(0.953/0.983)→exp_062 k64(0.951/0.978)→exp_063 tabm-mini(0.951/0.977)→exp_066 vf0.1+stint수치형+cross제거(0.951/0.977). **cross 제거가 corr 못 낮춤 = "NN 강한 numeric 표현 수렴"이 corr 원인(구조적)**, RealMLP와 둘 다 PLR-MLP라 동화. 데이터손실(val_fraction)·n_refit은 TabM 미지원/효과미미([[pytabkit_params]]).
+
+## 다음 NN 축 후보 — 다른 메커니즘 (RealMLP/TabM 동화 돌파)
+PLR-MLP 계열(RealMLP·TabM)은 서로 동화 → **메커니즘이 근본적으로 다른 NN**으로 분기 재시도:
+| 모델 | 메커니즘 | 분기 기대 | fold0 비용(T4) |
+|---|---|---|---|
+| **TabR**(`TabR_S_D`) | retrieval/instance-based | ★★★ (MLP/tree와 예측 패턴 최대 차이) | ~30-80분+ (retrieval 무거움) |
+| **FTT**(`FTT_D`) | attention | ★★ | ~15-30분 |
+| Resnet/MLP_RTDL | MLP 계열 | ★ (동화 위험, 비권장) | ~10-20분 |
+- 게이트: **fold0 corr<0.97 먼저**(개별 수렴 전, 동화면 즉시 kill). 비용 싼 FTT부터 권장, 분기 확인 시 TabR 확장.
 
 ## 피처 전략
 

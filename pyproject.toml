@@ -14,6 +14,7 @@ dependencies = [
     "kaggle==2.2.0",
     "hydra-core>=1.3",
     "optuna>=4.9.0",
+    "skorch>=1.4.0",
 ]
 
 [project.optional-dependencies]

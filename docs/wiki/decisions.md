@@ -2,6 +2,16 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [032] RealMLP n_refit=1 park — 개별↑이나 포화로 스택 전이 0 — 2026-06-05
+- **결정**: RealMLP `n_refit=1`(데이터 손실 64%→80% 해결, [[pytabkit_params]]) + Stint 수치형(exp_065) **park**. RealMLP 멤버는 exp_046 유지.
+- **이유**: fold0 개별 **0.954178 (vs exp_056 0.953825, +0.000353)** — n_refit 데이터 손실 해결이 **개별 레버로 유효**(TabM val_fraction과 달리 RealMLP refit은 효과 실재, 가설 검증). **그러나 스택 swap(fold0) Δ −0.000039** + corr↔exp_046 **0.9947(복제)**·↔LGBM 0.9895(포화 심화) → **전이 0~음**(exp_056 swap −0.000008 동형). 비용도 큼(n_refit 2× × n_ens24, fold0 80분 / full ~7h).
+- **대안·트레이드오프**: **n_refit(데이터 손실 해결)은 개별 레버로 유효하나 포화 멤버(RealMLP)에선 스택 무의미** → **비포화 새 NN축(TabR/FTT)에 적용하면 가치**. 즉 데이터 손실 해결은 신축 NN과 결합할 백로그.
+
+## [031] TabM park 확정 (정식 개선 7레버 소진) → NN 축은 다른 메커니즘으로 — 2026-06-05
+- **결정**: TabM 5번째 멤버 **park 확정**([[tabm]]). #029(default 무튜닝 park)에 이어 **정식 개선 시도까지 소진**. NN 다양성 축은 **RealMLP/TabM과 다른 메커니즘**(TabR retrieval·FTT attention) 후보로 전환.
+- **이유(7레버 소진, 게이트 corr<0.97 불가)**: hash64(분기 0.965)·pwl(개별↑)·tabm_k64·tabm-mini·val_fraction0.1·Stint수치형·cross제거 — 모두 시도해도 **개별 0.951↔corr 0.977~0.983 고정**. progression: exp_058(0.948/0.965)→exp_061 pwl(0.953/0.983)→exp_062 k64(0.951/0.978)→exp_063 mini(0.951/0.977)→exp_066 vf+stint+cross(0.951/0.977). **cross 제거가 corr 못 낮춤 = 중복 아닌 "NN 강한 numeric 표현 수렴"이 corr 원인**(구조적). 둘 다 PLR-MLP라 같은 베이즈최적 수렴 → corr<0.97 & 개별 0.951 동시충족 경로 없음.
+- **대안·트레이드오프**: NN 신축이 목표(격차 +0.00057) 주경로인 건 유효(GBDT 포화·기존 NN 동화) → **메커니즘이 근본적으로 다른 NN**(TabR=retrieval/instance-based, FTT=attention)으로 분기 재시도. fold0 corr<0.97이 1차 게이트(동화면 즉시 kill). 비용: FTT fold0 ~15-30분, TabR ~30-80분+(retrieval). exp_044/045/055/058~066 대조군 보존.
+
 ## [030] CatBoost 튜닝(cat-tune) park — 천장 ≈0, 수동 중단 — 2026-06-05
 - **결정**: CatBoost Optuna 튜닝(cat-tune-l4c, resume patience5) **park**. 14 trial 시점 수동 중단(Lightning stop). best params는 `experiments/tuning/catboost_best.json`에 회수·보존, 스택 swap·exp_025 재학습 **안 함**.
 - **이유**: best = **trial#4 OOF 0.950079** (exp_025 0.950043 대비 **+0.000036**) — 이후 **비개선 trial 12개**(#5–#13) 전부 best 못 넘음 = 사실상 수렴. 스택 coef 0.10 반영 시 기여 ≈0, 목표 격차 +0.00057 대비 **트랙 천장 ≈0**(트랙 천장 게이트 규칙). best params: lr0.0286/depth9/l2 1.97/subsample0.796/max_ctr_complexity1.

@@ -33,6 +33,7 @@ _최종 갱신: 2026-06-05 (**stack_v7 제출 Private 0.95395 신기록**. RealM
 ## ⚙️ 인프라·운영
 - **Kaggle GPU 실행 SSOT = `docs/wiki/kaggle_jobs.md`**(이번 분리). `kernels push/output`, **동시 GPU ≥2 실측**(병렬 발사 OK), slug=title 케밥, status API 500 우회(`list --mine`), 실전 교훈 6종. torch 모델=T4.
 - **Lightning Job**(`lightning_jobs.md`): `.venv` 그대로 GPU(변환 불요). teamspace `ml`·user **`paraise`**·studio `predicting-f1-pit-stops`. wandb=`-e WANDB_API_KEY`(online). artifact=`/teamspace/jobs/<name>/artifacts/`. ⚠️ Kaggle 헤드리스 online-wandb 불가→`use_wandb=false`.
+- **Colab L4 실행 SSOT = `docs/wiki/colab_jobs.md`**(신설). **L4 24GB** 필요 모델(T4 16GB OOM·Lightning 과금 회피)용 — TabICL 등. Kaggle API로 데이터/src 받아 `src.train_*` 실행, **Colab Secrets**(KAGGLE_USERNAME/KEY) 인증, OOF 다운로드→`experiments/oof/`. 노트북 `kaggle/colab_*.ipynb`.
 - **노브**: `max_folds`(스크리닝)·`extra_categorical_cols`(모델별 범주형)·`seed`(fold 동결, 모델만)·`kill_criterion`.
 - 스태킹: `uv run python -m src.stack --members a,b,c,d --tag NAME`(logistic best). 튜닝: `tune_lgbm.py`/`tune_catboost.py --trials N --patience M`.
 

@@ -1,0 +1,10 @@
+# FTT (FT-Transformer, pytabkit FTT_D) — NN attention 축 (docs/wiki/ftt.md, #031 NN 신축).
+# RealMLP/TabM(PLR-MLP)과 다른 메커니즘(attention) → 분기 기대. Kaggle GPU(device=cuda).
+# baseline = default 무튜닝. module_*(n_layers·d_token·n_heads) 구조 레버는 Phase2.
+# 로컬 CPU 스모크만 model.params.device=cpu model.params.max_epochs=2.
+name: ftt
+params:
+  device: cuda
+  n_cv: 1            # 내부 CV 미사용 → 동일 fold 비교 (exp_016~ 관례)
+  n_refit: 0
+  verbosity: 1

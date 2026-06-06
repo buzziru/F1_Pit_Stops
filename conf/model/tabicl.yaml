@@ -1,0 +1,9 @@
+# TabICL (tabular foundation model, in-context learning) — NN 다양성 축 (docs/wiki/tabicl.md, #031).
+# S6E5 1위·8위 핵심 멤버. column-then-row attention+ICL → GBDT·PLR-MLP와 다른 메커니즘(decorrelation).
+# 추론 단일 GPU(multi-GPU는 fine-tuning 전용). 440k 메모리 = offload_mode=auto + batch_size↓.
+name: tabicl
+params:
+  device: cuda
+  n_estimators: 8        # 앙상블 멤버(많을수록 정확·느림). default 8
+  batch_size: 2          # 동시 처리 멤버 수 ↓ → 메모리↓ (default 8)
+  offload_mode: auto     # CPU/disk offloading 자동 (440k 대응)

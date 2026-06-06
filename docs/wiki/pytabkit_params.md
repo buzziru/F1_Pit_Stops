@@ -32,8 +32,13 @@
 **해결책**:
 | 모델 | 방법 |
 |------|------|
-| **RealMLP** | **`n_refit=1`** (best-epoch로 train+val 전체 재학습 → 64%→80%) — 지원됨 |
-| **TabM** | n_refit 불가 → **`n_cv=K`**(내부 K-fold CV bagging, 전체 커버, 비용 K배) 또는 **`val_fraction=0.1`**(90% 학습, 싼 완화) |
+| **RealMLP** | **`n_refit=1`** (best-epoch로 train+val 전체 재학습 → 64%→80%) — 지원됨(exp_065 검증) |
+| **TabM** | n_refit·수동refit 모두 불가 → **`n_cv=K`**(내부 K-fold CV bagging, 전체 커버, 비용 K배) 또는 **`val_fraction=0.1`**(90% 학습, 싼 완화) |
+
+**⚠️ TabM 수동 refit도 불가** (2026-06-05 검증, `Implement_refit.md` 패턴 시도):
+- Step1 stop_epoch 추출 ❌ — `fit_params_ = {'sub_fit_params': [None]}` (val_idxs 전달해도 동일, 내부 속성에 best/stop epoch 없음).
+- Step2 전체 재학습 ❌ — `val_fraction=0.0` → `ValueError: Training without validation set is currently not implemented`.
+- → TabM은 stop_epoch 미노출 + no-val 학습 미구현이라 **수동 2단계 refit 불가**. 데이터 손실은 `n_cv=K`/`val_fraction↓`만. (`val_fraction=0.1`은 동작 확인됨 = 90% 학습.)
 
 ## default vs 우리 프로젝트 설정
 **RealMLP_TD default** → **우리 override**(exp_046/056):

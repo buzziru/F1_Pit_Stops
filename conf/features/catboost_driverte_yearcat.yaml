@@ -1,0 +1,9 @@
+# CatBoost — Driver=OOF-TE numeric (조합 ctr서 분리) + Year-cat (catboost.md Phase1, 사용자 가설 2026-06-05).
+# exp_025(Driver native)는 Driver가 combinations_ctr에 들어가 887×Race 등 극sparse 조합 → max_ctr_complexity=1 수렴(#030).
+# Driver를 OOF-TE numeric으로 빼면 cat_features서 제외 → 조합 ctr 자동 제외 → 저카디(Race/Compound/Year)끼리
+# max_ctr_complexity↑ 조합 ctr 가능. OOF-TE는 Driver 강신호(타깃기반) 보존(freq 약신호·hash 순서무의미 회피).
+# 게이트(fold0): vs exp_025 0.950043 개별↑ → "Driver가 조합 망침" 가설 검증. model=catboost, max_ctr_complexity=4 병기.
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year]
