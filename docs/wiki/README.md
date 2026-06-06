@@ -20,6 +20,9 @@
   - [`exp_019_022_m4_ensemble.md`](experiments/exp_019_022_m4_ensemble.md) — M4 앙상블 XGB/CatBoost/3-way 블렌드 (채택·제출 신기록): GBDT 동질(corr 0.99)→non-GBDT 필요
   - [`exp_023_030_realmlp_yearcat_tuning.md`](experiments/exp_023_030_realmlp_yearcat_tuning.md) — RealMLP 도입·year/stint-cat·LGBM 튜닝 → stack_v4 (채택, Private 0.95273): non-GBDT가 도약, 범주레버는 모델별 비대칭
   - [`exp_032_036_realmlp_v2_gbdt_fe.md`](experiments/exp_032_036_realmlp_v2_gbdt_fe.md) — RealMLP v2·GBDT-FE 트랙 → stack_v5/v6 (채택, Private 0.95386): 강도는 decorrelated 축에서만 순+(곱 i_*는 GBDT 1종만 유효)
+  - [`exp_037_046_stackv7_track.md`](experiments/exp_037_046_stackv7_track.md) — TabM bins 스크린·RealMLP n_ens24·XGB freq-enc → stack_v7/v8 (채택, Private 0.95395): drop-in 강화는 게이트 미달도 채택, 죽은멤버 인코딩분기로 부활
+  - [`exp_047_068_nn_strengthen_parked.md`](experiments/exp_047_068_nn_strengthen_parked.md) — 기존 4멤버 강화 전부 park (포화): 개별↑ 레버는 비포화·고분기 멤버에만 전이, RealMLP/TabM/CatBoost 소진
+  - [`exp_069_071_nn_new_axis.md`](experiments/exp_069_071_nn_new_axis.md) — NN 신축 FTT·TabICL → TabICL 5번째 채택 (Private 0.95400): 메커니즘 차이도 corr↓ 불보장, OOF 미달도 LB로 확정
 - `domain/` — F1 피트전략 등 도메인 지식 메모.
 
 ## 작성 규칙

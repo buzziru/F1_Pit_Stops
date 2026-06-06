@@ -1,6 +1,16 @@
 # TabICL — 모델별 SSOT (NN 다양성 축 — tabular foundation model / ICL)
 
-> 2026-06-05 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **T4 16GB OOM 확인(exp_070) → L4 Colab 전환**(소규모 10k 통과, full 440k DeadKernel) · 관련 [[decisions]] #031(NN 동화)·[[ftt]]·[[realmlp]]·[[tabm]] · 실행 [[colab_jobs]](L4)·[[kaggle_jobs]](T4)
+> 2026-06-06 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **✅ 5번째 멤버 채택**(exp_071 full, stack_v9 Private **0.95400** 신기록, [[decisions]] #033) · 관련 #031(NN 동화)·[[ftt]]·[[realmlp]]·[[tabm]] · 실행 [[colab_jobs]](L4)·[[kaggle_jobs]](T4) · 회고 [[exp_069_071_nn_new_axis]]
+
+## ✅ 결과 (확정, 2026-06-06)
+| exp | 환경 | 설정 | 개별 OOF | 비고 |
+|---|---|---|---|---|
+| exp_070 | T4 OOM→L4 | cat.codes fold0 | 0.950616 | T4 16GB DeadKernel → L4 전환 |
+| **exp_071** | **L4 Colab** | **raw 자동인코딩 full** | **0.949358** | full 5-fold(cv_mean 0.949364), 채택 |
+- **범주형 raw 개선 = 무효**: exp_070 cat.codes fold0 0.950616 vs exp_071 raw fold0 0.950613 (**Δ 3e-6**). TabICL 내부 `TransformToNumerical`도 ordinal → 사전 cat.codes와 등가. **"cat.codes가 Driver(887) 왜곡" 가설 기각.**
+- **스택 게이트**: 5-member logistic **0.954357**(4-member base 0.954338 대비 **+0.000019**, Δ≥+0.0001 미달). corr LGBM 0.9762/XGB 0.9723/RealMLP 0.9692/CatBoost 0.9701 — 앵커(0.969) 수준, 분기 미약.
+- **그러나 LB는 우호**: stack_v9 제출 **Private 0.95400 / Public 0.95349** = **Private 신기록**(v7 0.95395 대비 +0.00005). OOF +0.000019 → Private +0.00005 환산. **채택**(drop-in, 다운사이드 0). 상세 [[decisions]] #033.
+- **천장**: 기여 미약(+0.00005), 목표 0.95452 잔여 격차 +0.00052를 단독으로 못 덮음. NN 신축 주경로에서 유일하게 LB+ 낸 멤버.
 
 ## 목표
 RealMLP·TabM(PLR-MLP)이 corr 0.98로 동화(#031 park) → **메커니즘이 근본 다른 NN**으로 분기. **TabICL = S6E5 실증 1순위**:

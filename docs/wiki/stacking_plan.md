@@ -13,8 +13,9 @@
 | stack_v4 | LGBM-tuned+XGB+CatBoost+RealMLP(exp_024) | — | 0.95273 |
 | stack_v5 | RealMLP v2(exp_032)로 교체 | 0.953504 | 0.95329 |
 | stack_v6 | LGBM 결합FE(exp_034) 채택 | 0.954204 | **0.95386** |
-| stack_v7 | XGB freq-enc(exp_043) 교체(#027) | 0.954307 | **0.95395**(현 제출 최고) |
-| **stack_v8**(현 best) | RealMLP n_ens24(exp_046) 교체(#029) | **0.954338** | 미제출 |
+| stack_v7 | XGB freq-enc(exp_043) 교체(#027) | 0.954307 | **0.95395** |
+| stack_v8 | RealMLP n_ens24(exp_046) 교체(#029) | 0.954338 | 미제출 |
+| **stack_v9**(현 best) | **TabICL(exp_071) 5번째 추가**(#033) | **0.954357** | **0.95400**(제출 신기록) |
 
 - **메타러너 결론**: **logistic**(L2 on logit)이 v6·v7·v8 모두 best. equal은 v7에서 죽은 멤버 제거 후 +0.000427 점프했으나 logistic 하회. **nnls는 RealMLP에 0 가중**(중복 판단) 경향 — logistic이 비선형 기여 더 살림. → §5 "1순위 nnls" 예상과 달리 **실측 logistic 우위**.
 - **멤버 진화**: exp_016→**exp_034**(LGBM 결합FE) / exp_019→exp_028→**exp_043**(XGB i_*+freq-enc 분기, #027) / exp_022→**exp_025**(CatBoost year-cat) / exp_024→exp_032→**exp_046**(RealMLP v2 n_ens24).
@@ -82,3 +83,43 @@ save: experiments/oof/stack_*.csv, submissions/stack_*.csv; report weights + AUC
 ## 리스크
 - 메타 가중의 OOF 과적합: 439k행·소수 피처·정규화/비음수 제약 → 위험 낮음(가중블렌드보다 안전). 그래도 §6 균등 대조 필수.
 - exp_025/LGBM-tuned가 기존과 corr 0.99↑면 다양성 0 → 제외(메타 가중 0로도 자동 처리되나 명시 제거 권장).
+
+## 9. stack_v9 구성 분석 + 향후 3축 로드맵 (2026-06-06)
+
+> 회고 [[exp_069_071_nn_new_axis]]·[[decisions]] #033. stack_v9(Private 0.95400) 구성을 분해해 다음 레버를 정의. 목표 0.95452, **잔여 격차 +0.00052**.
+
+### 9.1 멤버·개별 OOF·메타 가중
+| 멤버 | 모델 | 개별 OOF | logistic 기여 |
+|---|---|---|---|
+| LGBM exp_034 | GBDT(leaf, TE+i_*) | 0.953818 | ~42% |
+| XGB exp_043 | GBDT(lossguide, freq+i_*) | 0.953288 | ~24% |
+| RealMLP exp_046 | PLR-MLP(TE+i_*, n_ens24) | 0.952384 | ~19% |
+| CatBoost exp_025 | GBDT(oblivious, ordered TS) | 0.950043 | ~7% |
+| TabICL exp_071 | foundation/ICL(raw) | 0.949358 | ~8% |
+
+### 9.2 분기 구조 (Pearson corr)
+```
+            LGBM     XGB  RealMLP CatBoost  TabICL
+LGBM      1.0000  0.9928  0.9852  0.9773  0.9762
+XGB       0.9928  1.0000  0.9822  0.9756  0.9723
+RealMLP   0.9852  0.9822  1.0000  0.9686  0.9692
+CatBoost  0.9773  0.9756  0.9686  1.0000  0.9701
+TabICL    0.9762  0.9723  0.9692  0.9701  1.0000
+```
+- **핵심 발견: 5멤버지만 실효 축 ≈ 3개.** ① **GBDT 코어**(LGBM+XGB, corr **0.9928** = 사실상 1축, 가중 66%) ② RealMLP ③ CatBoost+TabICL 앵커(corr 0.969~0.970 밴드).
+- 가장 decorrelated 쌍 = RealMLP↔CatBoost 0.9686. 신규 멤버는 이 앵커 밴드(≤0.97)를 노려야 기여.
+
+### 9.3 향후 3축 (잔여 +0.00052 공략, 비용 오름차순)
+| 축 | 내용 | 비용 | 천장 추정 | SSOT |
+|---|---|---|---|---|
+| **① 코어 분기** | GBDT 코어 corr 0.9928↓ — **알고리즘·제약 분기**(DART·monotone·depth/min_child). 인코딩(L1)은 소진, **L4 미실행**이 남은 큰 레버 | **최저**(로컬 CPU ~분) | +0.0001~0.0003 | [[gbdt]] §3 L4 |
+| ② 새 앵커 멤버 | CatBoost/TabICL 밴드(0.969)에 비복제 멤버 추가 — FTT(corr CatB 0.957)·새 인코딩 GBDT | 중(GPU/CPU) | +0.0001~0.0002 | [[ftt]]·[[exp_069_071_nn_new_axis]] |
+| ③ FTT 편입 | FTT를 앵커로(CatBoost corr 0.957 매력), full+6멤버 게이트 | 중(GPU ~1.5h) | 불확실 | [[ftt]] |
+- **진행 순서 = ① → ② → ③** (사용자 2026-06-06, 최저비용부터). 각 축 **fold0 corr 선스크린 → 스택 swap/add 게이트(Δ≥+0.0001)**.
+- ⚠️ 천장 게이트: 단일 축이 +0.00052 전부를 덮진 못함(보조 레버 성격). 누적·병렬로 접근, 각 축 patience(N연속<ε → park).
+
+### 9.4 축① 코어 분기 — 실행 메뉴 (gbdt.md L4)
+- **L4-a DART**(boosting dropout): 다른 앙상블 메커니즘 → gbdt와 예측 패턴 분기. 한 노브, 도메인 추론 불요. (DART는 early-stop 미작동 → round cap 고정.)
+- **L4-b monotone_constraints**: 단조 제약 함수클래스 ≠ unconstrained → 진짜 다른 경계. 동일 비용(최저).
+- **L4-c depth/min_child 차등**: 한쪽 shallow(depth 4~6)·한쪽 leaf-wise wide. 동일 비용.
+- **판정**: fold0 corr↔LGBM(exp_034)/XGB(exp_043) 선스크린 → corr↓(<0.98 목표)+개별 유지면 full → **swap 또는 6번째 add 스택 게이트**.

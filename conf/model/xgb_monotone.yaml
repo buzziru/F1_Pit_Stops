@@ -1,0 +1,24 @@
+# [코어 분기 L4-b, gbdt.md] XGB = exp_043(xgb_combined_freq3) 동일 params + monotone 제약.
+# 목적: 강도 아닌 decorrelation — 단조 제약 함수클래스 ≠ LGBM unconstrained → 진짜 다른 경계.
+# 제약(P(pit next lap) 단조↑, F1 도메인 명확): TyreLife·Cumulative_Degradation·i_laptime_x_deg·i_laptime_x_absdeg.
+# 판정 = fold0 corr↔exp_034/exp_043 하락(<0.98) + 개별 유지 → full → 스택 swap/add 게이트.
+name: xgb
+params:
+  objective: binary:logistic
+  eval_metric: auc
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 63
+  max_depth: 0
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 5
+  reg_lambda: 1.0
+  monotone_constraints:
+    TyreLife: 1
+    Cumulative_Degradation: 1
+    i_laptime_x_deg: 1
+    i_laptime_x_absdeg: 1
+num_boost_round: 5000
+early_stopping: 200

@@ -1,7 +1,7 @@
 {
-  "id": "buzziru/tabicl-exp070-baseline-fold0",
-  "title": "tabicl exp070 baseline fold0",
-  "code_file": "exp_070_tabicl_baseline_fold0.ipynb",
+  "id": "buzziru/ftt-exp069-baseline-fold0",
+  "title": "ftt exp069 baseline fold0",
+  "code_file": "exp_069_ftt_baseline_fold0.ipynb",
   "language": "python", "kernel_type": "notebook",
   "is_private": true, "enable_gpu": true, "enable_internet": true,
   "dataset_sources": ["buzziru/f1-pit-src","aadigupta1601/f1-strategy-dataset-pit-stop-prediction"],

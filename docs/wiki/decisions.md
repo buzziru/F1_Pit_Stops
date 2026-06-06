@@ -2,6 +2,12 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [033] TabICL(exp_071) 5번째 멤버 채택 — OOF 게이트 경계나 LB +0.00005 신기록 → stack_v9 Private 0.95400 — 2026-06-06
+- **결정**: **TabICL exp_071_tabicl_raw_full 을 5번째 스택 멤버로 채택**. stack_v9 = LGBM exp_034 + XGB exp_043 + RealMLP exp_046 + CatBoost exp_025 + **TabICL exp_071**, logistic. **제출 → Private 0.95400 / Public 0.95349 = Private 신기록**(stack_v7 0.95395 대비 **+0.00005**, stack_v8 미제출 OOF 0.954338 base). 목표 0.95452 격차 +0.00057→**+0.00052**.
+- **이유**: 5-member logistic meta-OOF **0.954357**(4-member base 0.954338 대비 **+0.000019**). **엄격 게이트(Δ≥+0.0001) 미달**이나, ① 개별 약체(OOF 0.949358, 최약체)에도 logistic coef 0.081 부여 = 비복제 신호 ② OOF +0.000019가 **Private에선 +0.00005로 더 크게 환산**(LB가 OOF보다 TabICL에 우호적, exp_034·v7 패턴 재현) → 다운사이드 없는 drop-in. 메커니즘(column-then-row attention+ICL)이 GBDT/PLR-MLP와 이질이라 미약하나마 분기.
+- **범주형 raw 자동인코딩 = 무효(가설 기각)**: exp_070(cat.codes fold0 0.950616) → exp_071(문자열 자동인코딩 fold0 0.950613) **Δ 3e-6**. corr도 CatB 0.9712→0.9701·RealMLP 0.9705→0.9692로 미동. TabICL 내부 `TransformToNumerical`도 ordinal이라 사전 cat.codes와 등가 → **"cat.codes가 Driver(887) 왜곡" 가설 기각**. full 개별 cv_mean 0.949364.
+- **대안·트레이드오프**: 개별 최약체라 스택 희석 위험 있었으나 logistic 가중제어로 흡수. 기여 미약(+0.00005) → 목표(+0.00052 잔여)를 단독으로 못 덮음. **NN 신축 주경로(#031~)에서 유일하게 LB+ 낸 멤버**지만 천장 낮음. FTT(exp_069)는 경계·미채택(아래 회고), 결정 보류.
+
 ## [032] RealMLP n_refit=1 park — 개별↑이나 포화로 스택 전이 0 — 2026-06-05
 - **결정**: RealMLP `n_refit=1`(데이터 손실 64%→80% 해결, [[pytabkit_params]]) + Stint 수치형(exp_065) **park**. RealMLP 멤버는 exp_046 유지.
 - **이유**: fold0 개별 **0.954178 (vs exp_056 0.953825, +0.000353)** — n_refit 데이터 손실 해결이 **개별 레버로 유효**(TabM val_fraction과 달리 RealMLP refit은 효과 실재, 가설 검증). **그러나 스택 swap(fold0) Δ −0.000039** + corr↔exp_046 **0.9947(복제)**·↔LGBM 0.9895(포화 심화) → **전이 0~음**(exp_056 swap −0.000008 동형). 비용도 큼(n_refit 2× × n_ens24, fold0 80분 / full ~7h).

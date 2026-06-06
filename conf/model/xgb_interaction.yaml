@@ -1,0 +1,23 @@
+# [코어 분기 L4, gbdt.md] XGB = exp_043 동일 params + interaction_constraints.
+# 목적: decorrelation — 피처를 F1 도메인 3축으로 묶어 축 간 상호작용 차단 → block-additive 함수클래스.
+# LGBM(num_leaves=219, 자유로운 고차 상호작용)과 다른 트리 구조 → corr↓ 기대(monotone보다 강한 레버).
+# G1 열화/페이스 · G2 레이스상태/경쟁 · G3 식별/컨텍스트. 판정 = fold0 corr↔exp_034/043 + 개별.
+name: xgb
+params:
+  objective: binary:logistic
+  eval_metric: auc
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 63
+  max_depth: 0
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 5
+  reg_lambda: 1.0
+  interaction_constraints:
+    - [TyreLife, Cumulative_Degradation, Stint, "LapTime (s)", LapTime_Delta, i_tyre_over_lapnum, i_laptime_x_deg, i_laptime_x_absdeg, i_laptime_over_absdeg]
+    - [LapNumber, RaceProgress, Position, Position_Change, PitStop, i_lapnum_over_progress]
+    - [Driver_freq, Race_Compound_freq, Race_Year_freq, Compound, Race, Year]
+num_boost_round: 5000
+early_stopping: 200
