@@ -36,7 +36,7 @@ RealMLP·TabM(PLR-MLP)이 corr 0.98로 동화(#031 park) → **메커니즘이 �
 ## 리스크
 - **메모리**: 440k+offload가 T4 16GB에서 OOM 가능 → batch_size↓/subsample. 소규모 테스트 선결.
 - **offload 정확도 저하**: 대용량 offload 시 정확도 일부 손실 가능.
-- **범주형 label encoding**: TabICL이 codes를 ordinal로 오인할 수 있음(고카디 Driver 887) → raw vs 인코딩 A/B 필요.
+- **범주형 처리(확정·개선 2026-06-06)**: TabICL은 범주형을 **자동 인코딩**(`X_encoder_`/`TransformToNumerical`, 지도형은 `categorical_features` 인자 없음). 초판(exp_070 fold0 cat.codes)은 **ordinal로 미리 변환해 고카디 Driver(887)를 임의 순서 연속값으로 왜곡** → 개별 0.9506(낮음)의 주원인. **개선=`train_tabicl` 범주형을 문자열 그대로 전달**(자동 인코딩 활용). raw(cat.codes) full vs 개선(자동) full A/B로 효과 측정 예정.
 - **분기 미보장**: ICL도 같은 데이터 수렴 가능(corr↑). fold0 corr이 1차 판정(TabM 교훈).
 
 ## Sources

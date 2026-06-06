@@ -10,6 +10,7 @@
 3. **단계 주석 `# N) 설명`** 으로 셀 첫 줄 표기(예: `# 5) cfg + run`).
 
 ## 구조
+3.5 **노트북 파일명 = `exp_id` (cfg `exp_id` 와 일치), `kaggle/<exp_id>.ipynb`.** **새로운 실험(config·피처·방향 변경)일 때만 새 노트북 생성**(공용 이름 `colab_*` X). ⚠️ **마이너 수정(빌드 버그픽스·동일 config 재발사)은 기존 노트북 재사용/재push OK** — 새 exp_id 만들지 않는다. 예: `exp_070→exp_071`(인코딩 변경=새 실험) 새 노트북 / exp_065 v2·v3(빌드 버그픽스) 기존 재사용.
 4. **셀당 단일 책임.** setup / import / 경로 override / config / run / save 를 셀로 분리. config 와 run 을 한 셀에 합칠 땐 **반드시 한 셀 안에서 cfg 정의 → run 순서**로 두고, **중복 config 셀을 만들지 말 것**.
    - (실수: config+run 통합 셀이 빌드 루프의 두 `if` 에 중복 매칭돼 cfg 정의가 run 셀로 덮여 `NameError: cfg not defined` — exp_065.)
 5. **config 정의가 run 보다 먼저.** 빌드 스크립트로 셀을 교체할 때 cfg 정의 셀이 누락/뒤섞이지 않았는지 검증(코드 셀에 `cfg = OmegaConf.create` 1회, `run(cfg)` 1회, 같은 위치인지).
@@ -22,6 +23,9 @@
 
 ## 토큰·출력
 8. **출력 최소.** DataFrame 은 `.head(5)`/`.shape`/요약만, print 절제(CLAUDE.md 토큰 절약 원칙과 일관). 플롯은 노트북 빌드에 넣지 않는다.
+
+## wandb ([[kaggle-gpu-wandb-on]])
+9. **인프라별 `use_wandb` 디폴트:** **Colab(사용자 UI 실행)·Lightning = `true`**(online, WANDB_API_KEY 선결 — Colab Secrets `userdata`/Lightning `-e`). **Kaggle 헤드리스(`kernels push`) = `false` 유지**(secret attach 미유지로 online 불가). 로컬 CPU는 기본 on.
 
 ## 발사 전 체크리스트
 - [ ] `;` 다중문 없음 · 논리 블록 빈 줄 구분

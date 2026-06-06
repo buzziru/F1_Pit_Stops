@@ -42,7 +42,7 @@ CatBoost(exp_025, 개별 OOF **0.950043**, 스택 logistic coef **0.104**)의 **
   - ② **`model_size_reg`↑**(default 0.5): 고카디 ctr feature 선택 정규화.
   - ③ **`store_all_simple_ctr=True`**(default False): simple ctr 다양성↑.
   - ④ **`ctr_leaf_count_limit`**(default 무제한): 고카디 Driver(887) ctr leaf 폭발 제한 → 과적합↓(가장 직접적).
-  - 게이트(fold0, **GPU** 동일환경): vs exp_025 0.951265 개별↑. ⚠️ 모두 정규화/마진 레버 → 천장 낮음(보조 EV). GPU ctr 파라미터 지원 미니 검증 선결.
+  - **결과(exp_068, 2026-06-06, 기각)**: GPU는 store_all_simple_ctr 미지원 → **CPU 통제 비교**(nbr15000·augment 동일). ctr 정규화 묶음 fold0 **0.951079 vs exp_025 CPU baseline 0.951129 (Δ −0.000050)** = 노이즈, **효과 없음 → 기각**. Counter prior·model_size_reg·store_all·leaf_limit 모두 마진 0(best_iter만 8222로 빨리 수렴). default가 이미 충분.
 - **(기각) Driver hash · Driver-TE 조합분리 · driver_te numeric 추가**: hash=hash위 ctr 분기약 / TE분리=native ctr 손실(exp_067) / TE추가=중복. Driver native 유지가 결론.
 
 ### Phase 2 — Driver hash (하향, 평가 2026-06-05)

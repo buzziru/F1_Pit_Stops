@@ -30,26 +30,22 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     params = OmegaConf.to_container(cfg.model.params, resolve=True)
 
     def prepare(x, x_test, x_src, cat_cols, aug_enabled):
-        # TabICL 은 numeric 입력 → 범주형을 전역 일관 label encoding 으로 변환.
-        def codes_map(col: str) -> dict:
-            frames = [x[col], x_test[col]] + ([x_src[col]] if x_src is not None else [])
-            cats = pd.concat(frames, ignore_index=True).astype("category").cat.categories
-            return {c: i for i, c in enumerate(cats)}
-
+        # ⚠️ TabICL 은 범주형을 **자동 인코딩**(X_encoder_/TransformToNumerical) → cat.codes(ordinal)로
+        # 미리 변환하면 자동 인코딩을 방해해 고카디 Driver(887)가 임의 순서 연속값으로 왜곡됨(개별↓).
+        # 범주형을 **문자열 그대로** 넘겨 TabICL 자동 인코딩에 맡긴다. (2026-06-06 개선.)
         x, x_test = x.copy(), x_test.copy()
         if x_src is not None:
             x_src = x_src.copy()
         for col in cat_cols:
-            m = codes_map(col)
-            x[col] = x[col].map(m).astype("int32")
-            x_test[col] = x_test[col].map(m).astype("int32")
+            x[col] = x[col].astype(str)
+            x_test[col] = x_test[col].astype(str)
             if x_src is not None:
-                x_src[col] = x_src[col].map(m).fillna(-1).astype("int32")
+                x_src[col] = x_src[col].astype(str)
         return x, x_test, x_src, None
 
     def fit_predict(x_tr, y_tr, x_va, y_va, x_te, w_tr, cat_cols, state):
         model = TabICLClassifier(random_state=cfg.get("seed", config.SEED), **params)
-        model.fit(x_tr, y_tr)  # cat_col_names 없음 (label encoding 완료)
+        model.fit(x_tr, y_tr)  # 범주형 문자열 → TabICL 자동 인코딩
         return model.predict_proba(x_va)[:, 1], model.predict_proba(x_te)[:, 1], None
 
     return run_oof_cv(cfg, prepare=prepare, fit_predict=fit_predict, supports_weight=False)
