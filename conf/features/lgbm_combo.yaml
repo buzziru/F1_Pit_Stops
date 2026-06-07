@@ -1,0 +1,11 @@
+# [Heavy FE 조합형, ADR #036 (A)] lgbm_combined 노브 + add_heavy_fe_combo.
+# add_heavy_fe_combo = add_realmlp_features(i_*+cross+Stint_cat) + 조합형 group-stat ~215개
+#   (5 키 × 5 수치 × mean/std/min/max/range/rank/vs-mean/ratio + count + nunique).
+# 누수안전: 타깃 미사용(피처 컬럼의 그룹 통계) · 각 df 독립 계산(정규화 상수) · 시계열 없음.
+# 목적: 스태커용 대규모 표현분기 OOF. 개당 마진 판정 안 함 — 강정규화가 선택(prune 금지).
+# 강정규화는 model=lgbm_combo (feature_fraction≈0.3, lambda_l1>0) 와 함께 사용.
+feature_builder: add_heavy_fe_combo
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

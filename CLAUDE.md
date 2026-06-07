@@ -68,7 +68,8 @@ data/           # train/test/sample_submission  ← git 제외
 - ⚠️ train/test 가 동일 `(Race,Year,Driver)` 그룹을 공유하는 **row-level split** 이므로
   GroupKFold 불필요. StratifiedKFold 가 대회 셋업과 일치.
 - 모든 모델 비교는 **동일 fold(동일 seed)** 기준 OOF AUC 로 한다.
-- **OOF≈LB 검증됨** (exp_001: OOF 0.9439 vs Public LB 0.9443, 갭 +0.0004) → OOF 를 1차 기준으로 신뢰하고 제출은 마일스톤·큰 변화 시에만 (decisions #006).
+- ⚠️ **측정 검정력 한계(필수 인지)**: fold std σ≈0.0007 → 5-fold SE≈0.0003, 단일시드 2σ 탐지 임계 ~0.0006. **|Δ| < ~0.0006 결정을 단일시드로 판정 금지** — ≥3~5 seed 로 SE 축소하거나 **stack-add/잔차 d_eff 프레임**(노이즈 위에서 판정)으로 본다. (Heavy FE 7전이 ±0.0002 노이즈에서 '음성' 오판한 교훈, 2026-06-07.)
+- **OOF≈LB 검증됨(단, 단일모델 한정)** (exp_001: OOF 0.9439 vs Public LB 0.9443, 갭 +0.0004) → OOF 를 1차 기준으로 신뢰하고 제출은 마일스톤·큰 변화 시에만 (decisions #006). ⚠️ **스태커는 별개 레짐** — stack_v9 meta-OOF 0.95436 vs Private 0.95400(**−0.00036 낙관**) = 메타 과적합. 스택 멤버 추가 판정은 in-sample meta-OOF 가 아니라 held-out/nested 로, 멤버 증가의 meta-overfit 비용을 함께 본다.
 
 ## 모델링
 - 베이스라인: **LightGBM (CPU, 로컬)**. native categorical: `Driver, Compound, Race`

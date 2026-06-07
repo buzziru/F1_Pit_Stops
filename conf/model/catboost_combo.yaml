@@ -1,0 +1,17 @@
+# [Heavy FE 조합형, ADR #036 (A)] 정규화 CatBoost(GPU) — ~215개 조합형 group-stat 용.
+# ⚠️ GPU + categorical 에선 rsm(colsample) 미지원(catboost.yaml 주석) → l2_leaf_reg 상향으로
+#   정규화 대체. random_strength 도 상향해 wide 피처군 과적합 억제.
+name: catboost
+params:
+  loss_function: Logloss
+  eval_metric: AUC
+  learning_rate: 0.05
+  depth: 6
+  l2_leaf_reg: 10.0
+  random_strength: 2.0
+  bootstrap_type: Bernoulli
+  subsample: 0.8
+  task_type: GPU
+  devices: "0"
+num_boost_round: 5000
+early_stopping: 200

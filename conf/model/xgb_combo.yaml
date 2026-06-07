@@ -1,0 +1,18 @@
+# [Heavy FE 조합형, ADR #036 (A)] 강정규화 XGB — ~215개 조합형 group-stat 용.
+#   colsample_bytree≈0.3 · reg_alpha>0 (L1 희소화). 나머지는 xgb 기본.
+name: xgb
+params:
+  objective: binary:logistic
+  eval_metric: auc
+  tree_method: hist
+  grow_policy: lossguide
+  max_leaves: 63
+  max_depth: 0
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.3
+  min_child_weight: 5
+  reg_alpha: 1.0
+  reg_lambda: 1.0
+num_boost_round: 5000
+early_stopping: 200

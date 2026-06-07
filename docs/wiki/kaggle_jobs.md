@@ -48,7 +48,7 @@ cp /tmp/<out>/{oof,submissions,logs}/<exp>.* experiments/{oof,submissions,logs}/
 1. **Kaggle PyTorch 가 P100(sm_60) 미지원** — 현 이미지 torch 는 `sm_70 75 80 86 90 100 120`. **P100=sm_60 → CUDA 커널 불가**("no kernel image") 학습 크래시. `cuda.is_available()`·`get_device_name` 은 True 라 **assert 미검출**(연산서야 터짐). → **신경망(torch)은 T4(sm_75)**. (CatBoost/XGB GPU 는 자체 커널이라 무관.)
 2. **GPU 종류 = kernel-metadata `machine_shape`**(또는 `push --accelerator`). 검증값 `"nvidiaTeslaT4"`·`"nvidiaTeslaP100"`. 서버 검증 — 틀리면 push 에러. `enable_gpu:true` 병기.
 3. **`from src import config` 깨짐** — `sys.path.append` + 빈 `__init__.py` 면 `src` 가 namespace 패키지로 shadowing → `cannot import name 'config'`. **수정**: `sys.path.insert(0,…)` + `__init__.py` 비우지 않기(1줄).
-4. **로그·산출물은 완료 후에만** — `kernels output`/`logs` 는 실행 중 빈 응답(라이브 로그 불가). 완료 감지 = `output` 이 받아지는 순간(또는 웹). 실패해도 종료 후 `.log` 회수 가능 → 에러 원문 확인.
+4. **로그·산출물은 완료 후에만 + 모니터는 output-회수로만 판정** — `kernels output`/`logs` 는 실행 중 빈 응답(라이브 로그 불가). 완료 감지 = **`kernels output -p /tmp/out` 시도 → 기대 OOF 파일(`find <exp_id>.csv`) 출현 여부**(또는 웹). ⚠️ **`kernels status` 파싱으로 완료/실패 판정 금지**(반복 버그 2026-06-07): 일시적 `500 Server Error` 응답 문자열의 "Error" 가 `grep -i error|cancel` 에 **오매칭** → 멀쩡히 RUNNING 인 커널을 FAILED 로 오판·모니터 조기종료. 모니터 루프 = output 회수 시도 후 OOF 파일 있으면 recover, 없으면 계속 폴링(없는 동안은 '미완'으로 취급). 실패해도 종료 후 `.log` 회수 가능 → 에러 원문 확인. 템플릿: `/tmp/combo_monitor_all.sh`.
 5. **`kernels push` = 업로드 + 즉시 실행**(쿼터 소모). **fast-fail 가드 권장**: 노트북 앞단에 GPU·데이터 assert → 잘못된 환경이면 setup 직후 에러로 끝나 쿼터 절약.
 6. **운영**: `kaggle datasets files` 는 첫 페이지만(페이지네이션). dataset 변경 → `push version` 후 kernel push(input 최신 버전 자동 참조).
 

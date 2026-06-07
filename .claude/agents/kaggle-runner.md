@@ -16,10 +16,10 @@ model: sonnet
 ## 표준 워크플로우
 1. **코드 동기화** (src/conf 변경 시 필수): `bash kaggle/push_src_dataset.sh version "<msg>"` → `buzziru/f1-pit-src` 새 버전. 최초는 `create`.
 2. **kernel-metadata.json 준비**: `id`, `code_file`, `enable_gpu:true`, `enable_internet:true`, `dataset_sources`(코드+데이터), `competition_sources`, `is_private:true`.
-3. **노트북 준비**: `kaggle/realmlp_exp023.ipynb` 를 템플릿으로 복제/수정(exp_id, cfg). 아래 "노트북 필수 패턴" 준수.
+3. **노트북 준비 = `kaggle/gen_kernel.py` 로 생성**(⚠️ 이전 노트북 손복사 금지). 레지스트리 `KERNELS` 에 파라미터 항목 추가 후 `python kaggle/gen_kernel.py <name>`. 미지원 패턴(신경망 등)이면 템플릿/레지스트리를 확장해 생성한다. **손복사는 2중사본 drift·설정 상속 override 버그 유발**(2026-06-07, [[notebook_conventions]] §0). 아래 "노트북 필수 패턴" 준수.
 4. **push+실행**: `uv run kaggle kernels push -p kaggle/` (= 업로드 + 서버 즉시 실행, **GPU 쿼터 소모**).
-5. **RUNNING 확인 후 리턴**: `uv run kaggle kernels status buzziru/<slug>` 가 RUNNING 이면 **빠르게 리턴**. 장시간 block-poll 금지(메인이 백그라운드 모니터로 처리). 단, **fast-fail 가드가 잡는 초기 실패(GPU/mount/import, ~1–3분)는 짧게 확인** 후 리턴해도 좋다.
-6. **회수(별도 호출)**: 완료(`status`=COMPLETE) 후 `uv run kaggle kernels output buzziru/<slug> -p <dir>`. 산출물을 `experiments/{oof,submissions,logs}/` 로 복사.
+5. **push 성공 확인 후 리턴**: `version N successfully pushed` 확인되면 **빠르게 리턴**(메인이 백그라운드 모니터로 처리). 장시간 block-poll 금지. ⚠️ `kernels status` 는 일시적 500 이 잦아 **완료/실패 판정에 쓰지 마라**(교훈 6).
+6. **완료 감지·회수 = `kaggle/monitor.py`**(별도 호출): `uv run python kaggle/monitor.py <name> ...` 를 백그라운드로. **output-회수→OOF 파일 출현**으로 완료 감지하고 oof/·submissions/·logs/ 를 **명시 경로로 각각** `experiments/` 에 회수(동명파일 충돌 차단). status 파싱·`find -name|head -1` 금지.
 
 ## ⚠️ 치명적 교훈 (반드시 반영 — 모르면 시간·쿼터 낭비)
 1. **GPU 종류 지정 불가 → 무조건 P100**. `machine_shape` 토큰(`nvidiaTeslaT4` 등)은 서버가 generic `"Gpu"` 로 정규화해 **항상 P100** 을 준다(T4 미할당, 실측 4/4). headless API 로 T4 선택은 불가.
@@ -30,7 +30,7 @@ model: sonnet
 3. **마운트 경로 비표준 → 전부 glob 자동탐색**. headless 커널은 `/kaggle/input/<slug>` 가 아니라 **`/kaggle/input/datasets/<owner>/<slug>/...` 와 `/kaggle/input/competitions/<comp>/...`** 로 마운트된다(실측). 하드코딩 금지: `glob('/kaggle/input/**/src/config.py')`, `glob('/kaggle/input/**/<comp-slug>')`, `glob('/kaggle/input/**/<aug>*.csv')` 로 src·대회·증강 경로를 찾아라.
 4. **`from src import config` 깨짐 방지**: ① `sys.path.insert(0, SRC_ROOT)` (append 금지 — shadowing), ② `src/__init__.py` 비우지 말 것(빈 파일은 namespace 패키지화 → `unknown location`).
 5. **프로젝트 deps 설치**: `src/train_*.py` 는 top-level `import hydra`, `utils.py` 는 `from dotenv import ...` 라 Kaggle 에 없으면 import 시 `ModuleNotFoundError`. 노트북서 `!pip install -q hydra-core python-dotenv`(+ pytabkit) 설치. (omegaconf·numpy·pandas·sklearn 은 Kaggle 기본 제공.)
-6. **로그·산출물은 완료 후에만** — 실행 중 `output`/`logs` 빈 응답. 진행 판단은 `status`. 실패해도 종료 후 `.log` 회수해 **에러 원문 확인 가능**.
+6. **로그·산출물은 완료 후에만 + 완료감지는 output-회수로만** — 실행 중 `output`/`logs` 빈 응답. ⚠️ **`kernels status` 파싱으로 완료/실패 판정 금지**: 일시적 `500 Server Error` 문자열의 "Error" 가 `grep -i error` 에 오매칭 → RUNNING 커널을 FAILED 로 오판(2026-06-07 반복). 완료 = `kernels output` 회수 시 OOF 파일 출현. 실패해도 종료 후 `.log` 회수해 **에러 원문 확인 가능**.
 7. **fast-fail 가드로 쿼터 보호**: 노트북 **앞단**(비싼 `pip install` 前)에 GPU·mount·data assert 를 둔다. 잘못된 환경이면 초~분 내 종료. 비싼 단계(torch 설치 ~3–4분)는 가드 통과 후에만.
 8. **출력 경로 충돌**: `/kaggle/working` 에 oof·submission·log 를 같은 `exp_id.csv` 로 쓰면 덮어씀 → `working/{oof,submissions,logs}` **하위 분리**.
 9. **운영**: `kaggle datasets/kernels files` 는 페이지네이션(첫 페이지만, `--page-token` 필요). `-r zip` 업로드는 Kaggle 가 폴더로 정상 추출(0바이트 파일은 namespace 유발 주의). src 변경 시 `push version` 후 kernel push(최신 dataset 버전 자동 참조).
@@ -49,7 +49,8 @@ model: sonnet
 - 폴링이 필요하면 `run_in_background` 백그라운드 루프(상태 RUNNING/QUEUED 아닐 때까지)로. foreground `sleep` 금지.
 
 ## 리턴 형식
-- **상태**: kernel ref(URL) + 현재 status + (해당 시) 할당 GPU/torch 버전.
+- ⚠️ **증거 반환(결론 금지)**: 파일·설정 상태(예: `use_wandb`, 노트북 셀)를 보고할 땐 **실제 확인 명령 + 출력**(grep 결과·확인한 파일 경로)을 첨부한다. "노트북 다 False" 같은 *결론만* 보고 금지(2026-06-07 허위보고 사례). ⚠️ push되는 파일 = **메타 디렉터리 사본**(`kaggle/<n>/<n>.ipynb`)이지 최상위 사본이 아니다 — 확인·검증 대상은 **dir 사본**(생성기 사용 시 자동 일치).
+- **상태**: kernel ref(URL) + push 결과(version) + (해당 시) 할당 GPU/torch 버전.
 - **다음 동작**: 모니터 명령 1줄(`kaggle kernels status/output ...`) 또는 회수 완료 경로.
 - **실패 시**: 로그에서 추출한 **에러 원문 + 추정 원인 + 수정안**(위 교훈에 매핑). 추측/확인 구분.
 - **성공 회수 시**: fold별 AUC·OOF AUC, `experiments/` 회수 경로, 다음 분석(블렌드 등) 제안.

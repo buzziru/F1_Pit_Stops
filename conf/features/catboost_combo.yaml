@@ -1,0 +1,10 @@
+# [Heavy FE 조합형, ADR #036 (A)] CatBoost(catboost_combined) 노브 + add_heavy_fe_combo.
+# add_heavy_fe_combo = add_realmlp_features(i_*) + 조합형 group-stat ~215개.
+# ⚠️ stint-cat 제외 — CatBoost 엔 해로움 확인(ADR #020). Driver 는 native(TE 미사용).
+# 누수안전: 타깃 미사용 · 각 df 독립 계산 · 시계열 없음.
+# 강정규화는 model=catboost_combo (task_type=GPU, l2_leaf_reg 상향, rsm 적용) 와 함께 사용.
+feature_builder: add_heavy_fe_combo
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year]

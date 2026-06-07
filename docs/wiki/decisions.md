@@ -2,6 +2,12 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [037] Heavy FE 대규모분기(215 조합) — stacking-channel까지 기각, FE 레버 종결 — 2026-06-07
+- **결정**: #036 (A) "대규모 Heavy FE(200~400)+feature selection" 를 **실측 시도 완료 → 기각·park.** 조합형 템플릿 215피처(키5×수치5×집계8, 피처-only)를 강정규화 GBDT 3종(LGBM/XGB/CatBoost, Kaggle CPU/GPU 오프로드)으로 OOF 생성. **FE 의 마지막 미검증 채널(대규모 표현분기→스택 decorrelation, HEAVY_FE_OPINION §5)까지 닫힘** → FE 레버 종결. 다음 레버는 **보류(사용자 결정 대기, B/C/D 미결)**.
+- **이유(사전등록 게이트, 전부 kill)**: ① 단일모델 cv 0.9509~0.9515 = 기존 멤버(~0.954)보다 **−0.0023~0.0029**(설계대로, 판정 제외). ② **stack-add = +0.000001**(logistic C=1.0). ③ **ridge-logistic 전 C(1.0~0.01)에서 +0.000000~+0.000001** = 정규화 메타(H2)도 회수 실패. ④ combo OOF 가 기존 5멤버로 **R²=0.979 설명**, 잔차 **AUC 0.488~0.494(=랜덤·신호 없음)**, 멤버/메타 corr 0.982~0.989. ⑤ logistic coef: combo lgbm 0.065·xgb −0.018·cat −0.072(메타가 거의 안 씀·음수가중). ⑥ best_iter: lgbm/xgb 수렴, cat fold3=4999 cap접촉(미완이나 무의미-기각).
+- **의미**: combo OOF = *같은 raw 신호 위 GBDT* → ADR #015(유사경계 수렴)·#035(Driver-drop corr 0.99)가 예측한 고상관 블록으로 붕괴. "대규모분기면 다를 것"(HEAVY_FE §5) 실측 기각. + **meta-overfit 경고**: 현 스택 이미 OOF 0.95436→Private 0.95400(−0.00036), 멤버 추가는 그 갭 키움 → +0.000001조차 Private 음수 가능.
+- **대안·트레이드오프**: FE 3축(신호·분산·스택다양성) 전부 소진 → 잔여 +0.00052 는 **현 표현공간 밖**(베이즈-AUC 근처) 강한 증거. 남은 후보 = (B) LapTime_Delta 값교정(천장 작음·FE채널 기각됨) / (C) 외부데이터(유일 실재 논거·高노력) / (D) 견고화·마무리(EV-max read). **결정 주체=사용자.** combo OOF/submission 보존(`experiments/`). 동반 워크플로 개선(노트북 생성기·모니터 유틸·측정검정력 규칙) = 별도 기록.
+
 ## [036] Heavy FE 종합 음성 — 현 LGBM(Driver TE+i_*)에서 FE 증분 흡수(개별·다양성 양축), 다음 레버 미정 — 2026-06-06
 - **결정**: #035 의 "Heavy FE 임계경로" 를 **실측으로 시도 완료 → 현 모델 가족에선 무기여 확인.** 단정적 park 아님 — **다음 레버는 사용자 결정 대기**(아래 후보). FE 패러다임(Heavy FE) 자체는 유효하나 우리 베이스라인이 신호를 이미 포화.
 - **이유(FE 7전 실측, 전부 net-negative)**: prevstint/pitwin/relhist(재정규화 −0.0002씩) · poschange(시계열 새축 −0.0003) · is_consec_lap(−0.0002) · **Heavy FE 25일괄 −0.00130** · **횡단면 prune 11개 −0.00038**. 횡단면은 개별뿐 아니라 **다양성도 실패**(잔차상관 LGBM 0.9945↑, 스택 add +0.00001/swap −0.00007). importance 있어도(tyrelife_rank: split=402/gain=14588, split·gain 공히 신피처 중 유일 top12) OOF·스택 무기여 = `Driver`(split=11450·gain=365k) 신호 지배 + GBDT 가 raw 에서 등가 추출. **Driver-drop XGB 디코릴레이션도 corr 0.99(#035)** → 신호 축·분산 축 둘 다 포화.

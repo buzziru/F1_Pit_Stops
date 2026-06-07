@@ -1,0 +1,19 @@
+# [Heavy FE 조합형, ADR #036 (A)] 강정규화 LGBM — ~215개 조합형 group-stat 용.
+# 표현분기 OOF 생성이 목적이라 모델이 wide 한 피처군에서 선택하도록 강정규화.
+#   feature_fraction≈0.3 (트리마다 피처 30%만) · lambda_l1>0 (희소화). 나머지는 lgbm 기본.
+name: lgbm
+params:
+  objective: binary
+  metric: auc
+  boosting_type: gbdt
+  learning_rate: 0.05
+  num_leaves: 63
+  feature_fraction: 0.3
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  min_child_samples: 50
+  lambda_l1: 1.0
+  lambda_l2: 1.0
+  is_unbalance: false
+num_boost_round: 5000
+early_stopping: 200

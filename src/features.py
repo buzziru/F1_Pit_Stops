@@ -520,6 +520,85 @@ def add_heavy_fe_xsec(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+_COMBO_KEYS: dict[str, list[str]] = {
+    "Driver": ["Driver"],
+    "Compound": ["Compound"],
+    "Race": ["Race", "Year"],
+    "Stint": ["Stint"],
+    "DriverCompound": ["Driver", "Compound"],
+}
+_COMBO_NUMS: list[str] = [
+    "LapNumber", "TyreLife", "Position", "RaceProgress", "LapTime_Delta",
+]
+_COMBO_STAT_AGGS: list[str] = ["mean", "std", "min", "max"]
+_COMBO_NUNIQUE_NUMS: list[str] = ["LapNumber", "TyreLife"]
+
+
+def add_heavy_fe_combo(df: pd.DataFrame) -> pd.DataFrame:
+    """Heavy FE 조합형 템플릿 — 키×수치×집계 대규모 표현분기 OOF 생성 (ADR #036 (A)).
+
+    목적은 단일모델 정확도가 아니라 **스태커에 먹일 대규모 횡단면 표현분기**다
+    (HEAVY_FE_OPINION §2·5). 개당 마진 판정 안 함 — 블록 전체를 생성해 모델 정규화
+    (강 colsample·lambda)가 선택하게 하는 게 설계 의도 → prune 하지 않는다.
+
+    add_realmlp_features(i_* 상호작용 5종 + cross + Stint_cat) 위에 5개 그룹 키 ×
+    5개 수치 × 집계의 조합 ~215개를 일괄 생성한다.
+
+    그룹 키(범주형, 누수안전): Driver · Compound · (Race,Year) · Stint ·
+      (Driver,Compound) 페어. 수치: LapNumber · TyreLife · Position · RaceProgress ·
+      LapTime_Delta. 키×수치마다 mean/std/min/max + range(max-min) + rank(pct) +
+      vs-mean diff + ratio(8개) + 키마다 그룹크기 count + LapNumber/TyreLife nunique(2개).
+
+    누수안전 by construction:
+      - **타깃 미사용** — 전부 피처 컬럼의 그룹 통계(mean/std/min/max/nunique/rank).
+        타깃 파생/카운트 proxy 없음 → fold-내 OOF 불필요, 구조적 누수 안전.
+      - **시계열·shift·expanding·mask 전혀 없음** — 그룹 전체(현재행 포함) 통계지만
+        타깃을 안 보므로 미래행 마스킹 불변성은 N/A. rank(pct=True)는 그룹크기로 정규화.
+      - **각 df 독립 계산** — train 통계는 train 내, test 는 test 내에서 산출(정규화
+        상수). groupby().transform/rank 는 원본 index 정렬 유지(unique RangeIndex).
+
+    Args:
+        df: build_features 적용 후 DataFrame (원본 컬럼 포함).
+
+    Returns:
+        add_realmlp_features + 조합형 ~215개 파생이 추가된 복사본.
+    """
+    out = add_realmlp_features(df)
+    # 215개 컬럼을 dict 에 모아 한 번에 concat (frame.insert 반복 단편화 회피).
+    cols: dict[str, pd.Series] = {}
+
+    for kname, kcols in _COMBO_KEYS.items():
+        grp = out.groupby([out[c] for c in kcols], observed=True)
+        # 그룹 크기 count (키당 1개)
+        cols[f"cnt_{kname}"] = grp[kcols[0]].transform("size").fillna(0).astype("int32")
+        # LapNumber/TyreLife nunique (키당 2개)
+        for num in _COMBO_NUNIQUE_NUMS:
+            cols[f"{num}_nunique_{kname}"] = (
+                grp[num].transform("nunique").fillna(0).astype("int32")
+            )
+        for num in _COMBO_NUMS:
+            gnum = grp[num]
+            gmean = gnum.transform("mean")
+            gmin = gnum.transform("min")
+            gmax = gnum.transform("max")
+            cols[f"{num}_mean_{kname}"] = gmean.astype("float32")
+            cols[f"{num}_std_{kname}"] = gnum.transform("std").astype("float32")
+            cols[f"{num}_min_{kname}"] = gmin.astype("float32")
+            cols[f"{num}_max_{kname}"] = gmax.astype("float32")
+            cols[f"{num}_range_{kname}"] = (gmax - gmin).astype("float32")
+            cols[f"{num}_rank_{kname}"] = gnum.rank(pct=True).astype("float32")
+            cols[f"{num}_vsmean_{kname}"] = (out[num] - gmean).astype("float32")
+            cols[f"{num}_ratiomean_{kname}"] = (
+                out[num] / (gmean.abs() + 1e-6)
+            ).astype("float32")
+
+    # NaN/dtype 정리: std(단일행 그룹)=NaN, ratio div0=inf 등 → sentinel 0.
+    block = pd.DataFrame(cols, index=out.index)
+    fcols = block.select_dtypes(include="float32").columns
+    block[fcols] = block[fcols].replace([np.inf, -np.inf], 0.0).fillna(0.0)
+    return pd.concat([out, block], axis=1)
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """모델에 투입할 피처 컬럼 목록을 반환한다 (id, target 제외).
 

@@ -1,0 +1,9 @@
+# [Heavy FE 조합형, ADR #036 (A)] XGB(xgb_combined) 노브 + add_heavy_fe_combo.
+# add_heavy_fe_combo = add_realmlp_features(i_*) + 조합형 group-stat ~215개. native Driver TE 유지.
+# 누수안전: 타깃 미사용 · 각 df 독립 계산 · 시계열 없음.
+# 강정규화는 model=xgb_combo (colsample_bytree≈0.3, reg_alpha>0) 와 함께 사용.
+feature_builder: add_heavy_fe_combo
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]
