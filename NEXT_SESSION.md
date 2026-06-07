@@ -19,7 +19,7 @@ _최종 갱신: 2026-06-07 (세션3: **🎯 목표 돌파 Private 0.95460** > �
 ## ✅ 종결 — TabM (보조트랙 park)
 - Step A(`exp_tabm_fefull_fe`, 동일 FE) **회수·기각**: 단일 fold0 0.95208(exp_061 0.9528 미달) + **corr(fefull) 0.983**(게이트 0.97 초과). lr↑(#043)에 이어 2연속 음성 + #031 구조적 corr 천장 3중 확인 → **TabM park 재확정**. (Optuna는 exp_061 base 미발사, 저우선 백로그.)
 
-## 🔴 이번 세션 핵심 (ADR #041~#043)
+## 🔴 이번 세션 핵심 (ADR #041~#044)
 - **RealMLP 진단 종결(#041)**: exp_046(0.9524) 저조 = ① yekenot 옵티마이저 레시피 미모사(아키텍처만 차용) ② FE subset. 단계: params(+0.00099) → 변형B n_refit/Driver-native(+0.00026) → **풀FE 충실재현 fefull(+0.00040) = 0.954032**. 잔여 −0.00046은 **시드 아니라 FE**(동일 split paired). yekenot OOF 직접 스택 +0.00029, 자력 fefull도 거의 동일 → **외부의존 0**.
 - **orig 풀 종결(#042)**: xgb/cat 미수렴(cap 3000 점착) 재학습(cap 8000)했으나 **lgbm과 redundant**(내부corr 0.99) → xgb·cat 별도멤버 KILL. orig-lgbm만 marginal(LB +0.00001). 8-stack Private 0.95401.
 - **TabM 옵티마이저(#043)**: lr↑ 기각(lr008 붕괴) → OFAT 폐기, **Optuna 소공간 + 동일 FE**로 전환.
