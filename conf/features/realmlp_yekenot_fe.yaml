@@ -1,0 +1,10 @@
+# RealMLP yekenot 완전복제 변형B — heavy-FE + Driver-native.
+# B1: target_encode 에서 Driver 제외 → Driver 가 native 범주로 남아 RealMLP 임베딩(887→size6).
+#     (1차 yekenot 발사는 Driver 를 float OOF-TE 로 압축 → NN 고카디 임베딩 신호 손실 진단.)
+# B3: feature_builder=add_realmlp_yekenot_features (floor/bin 4종 + Driver/Compound/Race freq).
+# cross(Race_Compound·Race_Year)만 OOF-TE. Driver 는 native + freq(yekenot 동일).
+feature_builder: add_realmlp_yekenot_features
+target_encode_cols: [Race_Compound, Race_Year]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: [Year, Stint_cat, bin_progress, bin_laptime, bin_tyre, bin_deg]

@@ -23,6 +23,7 @@
   - [`exp_037_046_stackv7_track.md`](experiments/exp_037_046_stackv7_track.md) — TabM bins 스크린·RealMLP n_ens24·XGB freq-enc → stack_v7/v8 (채택, Private 0.95395): drop-in 강화는 게이트 미달도 채택, 죽은멤버 인코딩분기로 부활
   - [`exp_047_068_nn_strengthen_parked.md`](experiments/exp_047_068_nn_strengthen_parked.md) — 기존 4멤버 강화 전부 park (포화): 개별↑ 레버는 비포화·고분기 멤버에만 전이, RealMLP/TabM/CatBoost 소진
   - [`exp_069_071_nn_new_axis.md`](experiments/exp_069_071_nn_new_axis.md) — NN 신축 FTT·TabICL → TabICL 5번째 채택 (Private 0.95400): 메커니즘 차이도 corr↓ 불보장, OOF 미달도 LB로 확정
+  - [`exp_realmlp_yekenot_record.md`](experiments/exp_realmlp_yekenot_record.md) — RealMLP yekenot 자력재현 → 신기록 Private 0.95446 (+orig 풀 종결·TabM 재탐색): 천장은 데이터 아닌 **튜닝 천장**, paired OOF가 추측을 이김, 강-멤버 회복>corr 비관
 - `domain/` — F1 피트전략 등 도메인 지식 메모.
 
 ## 작성 규칙

@@ -1,6 +1,6 @@
 # orig-primary XGB — 원본 깊은 신호용 big max_depth (2nd place 단서). model 축 디코릴레이션.
 family: xgb
-num_boost_round: 3000
+num_boost_round: 8000  # cap 상향(3000 미수렴: best_iter cap 점착) — early_stopping(100)이 진짜 best_iter 포착
 params:
   objective: binary:logistic
   eval_metric: auc

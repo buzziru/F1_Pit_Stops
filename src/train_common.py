@@ -113,7 +113,8 @@ def run_oof_cv(
     fold_scores: list[float] = []
     best_iters: list[int | None] = []
 
-    folds = cv.get_folds(y)
+    n_folds = int(cfg.get("n_folds", config.N_FOLDS))  # split 다양성(7/10-fold) 지원, 기본 5
+    folds = cv.get_folds(y, n_folds=n_folds)
     max_folds = cfg.get("max_folds", None)
     if max_folds:
         folds = folds[:max_folds]
@@ -147,7 +148,7 @@ def run_oof_cv(
             x_tr, y_tr, x_va, y_va, x_te, w_tr, cat_cols, state
         )
         oof[va_idx] = oof_pred
-        test_pred += test_contrib / config.N_FOLDS
+        test_pred += test_contrib / n_folds
         score = roc_auc_score(y_va, oof[va_idx])
         fold_scores.append(score)
         best_iters.append(best_iter)

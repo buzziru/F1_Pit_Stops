@@ -2,6 +2,33 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [044] split 다양성(7/10-fold)으로 d_eff 돌파 → 🎯 목표 초과 Private 0.95458 — 2026-06-07
+- **결정**: OOF 풀의 d_eff 병목(피처/모델 축 전부 corr 0.99 붕괴, **d_eff 1.08**)을 **split 다양성**(최강 멤버 fefull을 7/10-fold 재학습)으로 돌파. ridge-LR-logits 메타 + split = **Private 0.95458(목표 0.95452 초과 +0.00006)**. 궤적 0.95405→0.95446(fefull HC)→0.95449(ridge풀)→0.95458(split).
+- **이유(실측)**:
+  - **풀 d_eff=1.08**(72 OOF): 보유 전 실험이 corr 0.99 한 클러스터(이전 #034 N_eff 1.03 재확인). 68-OOF ridge-pool 제출 Private **0.95449**(HC 0.95446 **+0.00003** — 약체-직교 추출은 ridge>HC, #040 thesis 확증). 신 패밀리·CatBoost강화 등 "더 같은 OOF"는 무효(CatBoost 강화 stack −0.000001, 잔차 0.48 랜덤).
+  - **split = 유일 직교축**: fefull 7/10-fold가 5-fold와 corr 0.9967/0.9970이나 **잔차 AUC 0.528/0.533(실신호)**. fold-구조 축은 피처붕괴와 **독립**(8th place L5). 7/10-fold는 학습데이터 86%/90%로 **개별도 ↑**(0.9542/0.9543).
+  - **스택**: 6멤버 + 7/10-fold = meta-OOF +0.000176. 70-OOF ridge = 0.954978 → **Private 0.95458**(in-sample +0.000154의 ~60% 전이). split 멤버가 ridge 최상위 가중(10f 0.239·7f 0.211).
+- **대안·트레이드오프**: 메타러너 = **HC→ridge-LR-logits 전환**(약체-직교 추출, 1st place 정석, 50-50 블렌드 후보). split 잔차 0.53(완전직교 아님) → 추가 fold/멤버는 체감 수확(patience로 한계 d_eff 추적). **B=split 스케일업**(XGB/CatBoost 7/10-fold=train_common CPU·GPU한도 무관, 더 많은 fold). 인프라: train_common `n_folds`(test 나눗셈 `config.N_FOLDS` 하드코딩 버그 수정)·gen_kernel `n_folds` 필드. `stack_ridge_split`은 인라인 스크립트 산물 → `src.stack` ridge 정식화 후보.
+
+## [043] TabM 옵티마이저 — lr↑ 기각·OFAT 폐기 → Optuna 소공간 + 동일 FE(fefull) 재설정 — 2026-06-07
+- **결정**: TabM 옵티마이저 탐색을 ① **lr↑ 방향 기각**(fold0 lr0.004=0.9513·lr0.008=0.9459 둘 다 exp_061 0.9528 미달) ② **OFAT(1노브씩) 폐기 → Optuna 소공간 결합 탐색**(HP 상호작용) ③ **동일 FE 재설정**(fefull 41피처를 TabM에 적용, Step A `exp_tabm_fefull_fe` 실행 중)으로 전환.
+- **이유(실측·논리)**: ① **lr↑ 역반응** — NN은 lr 높여 개선 드묾(yekenot도 RealMLP lr↓), TabM default 0.002에서 ↑는 lr008 붕괴(0.9459)로 확정. ② **OFAT 한계** — Step1이 lr+dropout+val_auc 묶여 혼입 = HP 상호작용 → Optuna(lr loguniform[5e-4,4e-3]·dropout[0,0.2]·tabm_k{32,64}·arch_type, pwl+val_auc 고정, fold0 목적함수 + top-3 full confirm). ③ **데이터효율 구조적캡** — TabM n_refit 불가(NotImplementedError), val_fraction 0.1은 64→72%(+8% sub-noise)·n_cv는 배깅(tabm_k 무효라 EV낮음). ④ **동일 FE 가설** — #029/#031 약함 원인 "RealMLP 피처 차용+default 방치" → 최강 FE(fefull)로 재설정해 진짜 단일천장+corr 측정.
+- **대안·트레이드오프**: binding constraint는 단일 아닌 **스택 corr 0.98 구조적 동화(#031)** — 동일 FE는 corr↑ 위험(아키텍처만 다름) → 성공게이트=스택기여. TabM은 보조트랙(RealMLP 임계경로). Step A 결과로 Optuna 공간 분기(단일↑→옵티마이저만 / 정체→FE축 `driver_enc{native,hash64}` 추가). 인프라 `src/tune_tabm.py`(Optuna) 후보.
+
+## [042] orig 풀 판정 종결 — xgb/cat 미수렴 재학습 후에도 lgbm과 redundant(별도멤버 KILL), 풀 LB +0.00001 marginal — 2026-06-07
+- **결정**: orig-primary 풀(lgbm/xgb/cat) 스택 기여 판정 완료 → **xgb·cat 별도멤버 KILL**(lgbm과 중복), **orig-lgbm만 marginal contributor 보존**(최종 HC weight 0.017). orig 축 = marginal·solver 아님 확정(#040 보강).
+- **이유(실측)**: ① **미수렴 발견·수정** — orig xgb/cat best_iter가 cap 3000 점착(early-stop 미발화)=미완학습. 커널 "수렴 OK" 경고가 실제 cap(yaml)이 아닌 별도 `num_boost_round_cap`(5000)으로 체크 = **거짓양성 버그** → cap 8000 일치·재학습(xgb 수렴 [3372~3992], cat fold4=7998 경계). ② **수렴 후에도 redundant** — orig 풀 내부 corr lgbm-xgb 0.989·xgb-cat 0.975(d_eff≈1). 8멤버 stack-add Δ+0.000019 ≈ lgbm단독 +0.000014. nnls가 풀에서 lgbm만 0.0168, xgb·cat 0. 잔차AUC lgbm 0.603>xgb 0.552>cat 0.540. ③ **LB 실증** — stack8_origpool_logistic Private **0.95401**(=logistic[5] 0.95400 +0.00001) → xgb·cat LB 0 기여.
+- **대안·트레이드오프**: orig 축 천장 ~+0.00002 « 격차 → RealMLP fefull(#041)이 격차를 닫음. orig-lgbm은 최종 앙상블 marginal 멤버 유지. **best_iter 검수는 실제 cap 기준이어야**(gen_kernel num_boost_round_cap = 실 cap 일치하도록 수정).
+
+## [041] RealMLP 저조 원인 = yekenot 옵티마이저 레시피+FE 미모사 → 자력 재현(fefull) yekenot 매칭, 신기록 Private 0.95446 — 2026-06-07
+- **결정**: RealMLP(exp_046 0.952384)가 top RealMLP 미달한 원인 = ① **옵티마이저 레시피 미모사**(아키텍처 6노브만 차용, lr/sched/dropout/tfms/PLR/ls/bias/val-auc는 pytabkit TD default) ② **FE subset**. yekenot 레시피+FE **자력 충실 재현**(`exp_realmlp_yekenot_fefull` OOF **0.954032** = yekenot 실측 0.954093 −0.00006 노이즈 내 매칭, corr 0.997) → 스택 최강 멤버 → **신기록 `stack_hc_fefull_orig` Private 0.95446**(기존 0.95405 +0.00041, 목표 0.95452까지 잔여 +0.00006).
+- **이유(실측, 단계 분해)**:
+  - **params 레시피**: exp_046(TD default) → yekenot params(lr0.019/lin_cos_log_15/p_drop0.05/tfms/PLR/ls/bias/val_metric=1-auc_ovr, ep5×ens20) = OOF **+0.000993**(→0.953377).
+  - **변형B(B1 Driver-native + B2 n_refit=1 + B3 heavy-FE subset)**: OOF 0.953637(+0.00026). Public +0.00012이나 Private 동률(단일멤버 +0.00003은 LB 해상도·메타낙관 미만).
+  - **FE 충실재현(전수 floor-범주화 13 + data-fit quantile KBins 2 + count 5)**: fefull **0.954032**(+0.000395). YEKENOT_REF 41피처 정확 일치 → **−0.00046 잔여격차의 정체 = FE**(시드/노이즈 아님 — 동일 split paired 비교).
+  - **스택**: fefull이 HC weight **0.467**(최강) → meta-OOF 0.954357→0.954761 → **Private 0.95446**(in-sample→Private −0.00030 메타낙관 예상폭).
+- **대안·트레이드오프**: yekenot OOF 직접 편입은 meta-OOF 0.954802(+0.00004)이나 test 예측 미보유 → 자력 fefull로 외부의존 0. 잔여 −0.00006(fefull vs yekenot)=시드+미세 FE/TE 디테일. 인프라: `add_realmlp_yekenot_full_features`(features.py, 누수0 검증)·`realmlp_yekenot_full_fe.yaml`·`realmlp_yekenot_full.yaml`·gen_kernel `needs_torch`(P100 cu121 torch)+`model_overrides`(스윕).
+
 ## [040] Phase1 디코릴레이션 실측 — orig-col 흡수 KILL / orig-primary 진짜 직교이나 약체 → 약체-풀+LR 전환 — 2026-06-07
 - **결정**: ① **orig-col TE(S1) 기각**(흡수). ② **orig-primary(원본 학습→대회 예측)는 채택 방향 유지** — 첫 진짜 디코릴레이션이나 약체라 단독 무가치, **약체-풀(LGBM/XGB/CatBoost)+정규화 LR**로 확장((나), Kaggle CPU 실행 중). ③ **orig FE강화(i_*) park**(분포시프트 약화).
 - **이유(실측)**:

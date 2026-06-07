@@ -15,8 +15,15 @@
 | stack_v6 | LGBM 결합FE(exp_034) 채택 | 0.954204 | **0.95386** |
 | stack_v7 | XGB freq-enc(exp_043) 교체(#027) | 0.954307 | **0.95395** |
 | stack_v8 | RealMLP n_ens24(exp_046) 교체(#029) | 0.954338 | 미제출 |
-| **stack_v9**(현 best) | **TabICL(exp_071) 5번째 추가**(#033) | **0.954357** | **0.95400**(제출 신기록) |
+| stack_v9 | **TabICL(exp_071) 5번째 추가**(#033) | 0.954357 | 0.95400 |
+| stack_hc | v9 5멤버 **HC 블렌더**(#039) | 0.954407(HC OOF) | **0.95405** |
+| stack_hc_yk_orig | RealMLP→yekenot params(1차)+orig-lgbm | 0.954447(HC OOF) | 0.95405(동률) |
+| stack_hc_fefull_orig | **RealMLP→fefull**(yekenot FE 자력재현, #041)+orig-lgbm, HC | 0.954761(HC OOF) | 0.95446 |
+| stack_ridge_pool | **68-OOF 풀 ridge-LR-logits**(C=0.003, 메타러너 HC→ridge) | 0.954824 | 0.95449 |
+| **stack_ridge_split**(현 best) | **+fefull 7/10-fold split다양성** → 70-OOF ridge (#044) | **0.954978** | **🎯 0.95458**(목표 0.95452 초과) |
 
+- **2026-06-07 🎯 목표 초과 0.95458**(#044): **split 다양성**(fefull 7/10-fold, fold-구조 직교축 잔차 0.53)이 d_eff 1.08 붕괴를 돌파 → ridge 70-OOF 풀 meta-OOF 0.954978 → Private 0.95458(+0.00009 vs ridge-pool). 메타러너 **HC→ridge-LR-logits**(약체-직교 추출). 궤적 0.95446→0.95449→0.95458.
+- **2026-06-07 신기록 0.95446**(목표 0.95452까지 +0.00006): RealMLP를 **fefull**(yekenot 옵티마이저+FE 자력재현, 단일 0.954032)로 교체 → HC weight 0.467 최강 멤버. 기존 0.95405 대비 **+0.00041**(메타-OOF 0.954357→0.954761, in-sample→Private −0.00030 메타낙관). 상세 [[realmlp]]·[[decisions]] #041. orig-lgbm은 marginal 멤버(+0.00001, #042).
 - **메타러너 결론**: **logistic**(L2 on logit)이 v6·v7·v8 모두 best. equal은 v7에서 죽은 멤버 제거 후 +0.000427 점프했으나 logistic 하회. **nnls는 RealMLP에 0 가중**(중복 판단) 경향 — logistic이 비선형 기여 더 살림. → §5 "1순위 nnls" 예상과 달리 **실측 logistic 우위**.
 - **멤버 진화**: exp_016→**exp_034**(LGBM 결합FE) / exp_019→exp_028→**exp_043**(XGB i_*+freq-enc 분기, #027) / exp_022→**exp_025**(CatBoost year-cat) / exp_024→exp_032→**exp_046**(RealMLP v2 n_ens24).
 - **포화·동화 교훈**(#021/#025/#028/#029): 개별↑이 스택 전이 보장 안 함. **새 축(decorrelation)만 순이득** — XGB freq-enc 성공(#027), seed-avg 중립(#028), TabM/i_* 동화 park(#025/#029). 목표 격차 +0.00005(노이즈 바닥).

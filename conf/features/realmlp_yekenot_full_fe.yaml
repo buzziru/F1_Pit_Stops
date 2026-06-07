@@ -1,0 +1,23 @@
+# RealMLP yekenot FE 충실 재현 (41 피처) — 변형B heavy-FE(subset, −0.00046 격차)를 메움.
+# feature_builder=add_realmlp_yekenot_full_features: 전수 floor-범주화 13 + count 5 + KBins 2 + cross 2 + i_* 5.
+# Driver native(TE 제외) — yekenot 동일. cross 2개만 OOF-TE. floor-cat/KBins 는 extra_categorical 로 native 임베딩.
+feature_builder: add_realmlp_yekenot_full_features
+target_encode_cols: [Race_Compound, Race_Year]
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols:
+  - fc_year
+  - fc_pitstop
+  - fc_lapnumber
+  - fc_stint
+  - fc_tyrelife
+  - fc_position
+  - fc_laptime
+  - fc_laptimedelta
+  - fc_cumdeg
+  - fc_raceprogress
+  - fc_poschange
+  - fc_i_lapnum_over_prog
+  - fc_i_tyre_over_lapnum
+  - kb_raceprogress
+  - kb_laptime

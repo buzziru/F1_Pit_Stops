@@ -1,9 +1,25 @@
 # TabM — 모델별 SSOT (피처 전략 · 성능 개선 5번째 멤버 추가)
 
-> 2026-06-05 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **park 확정** ([[decisions]] #031 — 정식 개선 7레버 소진, corr<0.97 불가) · 관련 [[decisions]] #029·#031·#021·#025·#017 · 실행 [[kaggle_jobs]]/[[lightning_jobs]]
+> 2026-06-05 · 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) · 상태: **park 재검토 중** (2026-06-07 [[decisions]] #043 — 옵티마이저 레시피 재탐색, RealMLP yekenot 성공 #041 근거. Step A 실행 중) · 관련 [[decisions]] #043·#031·#029·#021·#025·#017 · 실행 [[kaggle_jobs]]/[[lightning_jobs]]
 
 ## park 결론 (#031, 2026-06-05)
 **7레버 소진해도 개별 0.951↔corr 0.977~0.983 고정** → corr<0.97 & 개별 0.951 동시충족 불가. progression: exp_058(0.948/0.965)→exp_061 pwl(0.953/0.983)→exp_062 k64(0.951/0.978)→exp_063 tabm-mini(0.951/0.977)→exp_066 vf0.1+stint수치형+cross제거(0.951/0.977). **cross 제거가 corr 못 낮춤 = "NN 강한 numeric 표현 수렴"이 corr 원인(구조적)**, RealMLP와 둘 다 PLR-MLP라 동화. 데이터손실(val_fraction)·n_refit은 TabM 미지원/효과미미([[pytabkit_params]]).
+
+## 옵티마이저 레시피 재탐색 (2026-06-07, [[decisions]] #043) — park 재검토
+RealMLP yekenot 레시피가 +0.001~0.00165 입증(#041) → TabM "옵티마이저 방치"(#029) 재조명. **park 자체는 미철회**, 레시피 트랙만 정식 재시도.
+
+| exp | 변경 | fold0 AUC | 판정 |
+|---|---|---|---|
+| exp_061 (기준) | pwl, default 옵티마이저 | ~0.9528 | TabM 최고 |
+| exp_tabm_opt_lr004 | pwl+val_auc+dropout0.05 **+lr 0.004** | 0.9513 | 미달 |
+| exp_tabm_opt_lr008 | 〃 **+lr 0.008** | 0.9459 | 붕괴 → **lr↑ 기각** |
+| exp_tabm_fefull_fe (Step A) | **fefull 동일 41피처 FE** + pwl | 실행 중 | 단일·corr 측정 |
+
+- **lr↑ 기각**: NN은 lr 높여 개선 드묾(yekenot도 RealMLP lr↓). TabM default 0.002 최적 근처(lr008 붕괴).
+- **OFAT → Optuna 전환**: Step1이 lr+dropout+val_auc 혼입(HP 상호작용) → **Optuna 소공간**(lr loguniform[5e-4,4e-3]·dropout[0,0.2]·tabm_k{32,64}·arch_type, pwl+val_auc 고정, fold0 목적함수 + top-3 full confirm).
+- **데이터효율 구조적캡**: n_refit 불가, val_fraction 0.1=64→72%(+8% sub-noise), n_cv 배깅(tabm_k 무효라 EV낮음) → 데이터 레버 약함.
+- **동일 FE 가설(Step A)**: 약함 원인 "RealMLP 피처 차용+default"(#029) → **최강 FE(fefull 41피처)로 재설정**. ⚠️ 동일 입력은 corr↑ 위험(아키텍처만 다름) → 게이트=스택 기여. 단일↑이면 Optuna 옵티마이저, 정체면 Optuna에 FE축(`driver_enc{native,hash64}`) 추가.
+- 인프라: `src/tune_tabm.py`(Optuna) 후보 · gen_kernel `model_overrides`(lr 스윕) · `tabm_fe`/`realmlp_yekenot_full_fe` 피처.
 
 ## 다음 NN 축 후보 — 다른 메커니즘 (RealMLP/TabM 동화 돌파)
 PLR-MLP 계열(RealMLP·TabM)은 서로 동화 → **메커니즘이 근본적으로 다른 NN**으로 분기 재시도:

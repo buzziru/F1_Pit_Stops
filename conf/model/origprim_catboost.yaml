@@ -1,6 +1,6 @@
 # orig-primary CatBoost — depth 10. model 축 디코릴레이션. iterations/early_stop 는 트레이너가 주입.
 family: catboost
-num_boost_round: 3000
+num_boost_round: 8000  # cap 상향(3000 미수렴: best_iter cap 점착) — early_stopping(100)이 진짜 best_iter 포착
 params:
   learning_rate: 0.03
   depth: 10

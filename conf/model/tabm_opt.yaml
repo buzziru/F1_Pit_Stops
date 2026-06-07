@@ -1,0 +1,14 @@
+# TabM 옵티마이저 레시피 탐색 base (Step1) — TabM_D + pwl 수치임베딩 + AUC 검증지표 + 낮은 dropout.
+# 진단: TabM 은 피처만 7레버 탐색, lr/dropout/스케줄 = pytabkit default 방치(best 0.95083 vs 2nd 0.95337).
+# lr 은 레지스트리 model_overrides 로 스윕(0.004/0.008/0.016, default 0.002 대비). 피처=tabm_fe 고정(옵티마이저 격리).
+# ⚠️ random_state 는 train_tabm.py 주입. RealMLP 전용(hidden_sizes/plr_*/embedding_size)은 TabM 미수용 → 제외.
+#    n_epochs 는 null(TabM_D auto early-stop) 유지 — 학습량 레버는 Step2.
+name: tabm_opt
+params:
+  device: cuda
+  n_cv: 1
+  n_refit: 0
+  verbosity: 1
+  num_emb_type: pwl           # TabM 유일 지원 수치임베딩(exp_061 개별 +0.0041)
+  val_metric_name: 1-auc_ovr  # AUC 대회 → 내부 검증/스케줄을 AUC 로
+  dropout: 0.05               # ⚠️ TabM 은 `dropout`(RealMLP `p_drop` 미수용). default 0.1 → 낮춤

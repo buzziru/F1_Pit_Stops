@@ -99,6 +99,114 @@ def add_tabm_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_realmlp_yekenot_features(df: pd.DataFrame) -> pd.DataFrame:
+    """RealMLP yekenot 완전 복제용 heavy-FE (변형 B 의 B3, yekenot 8위 FE 충실판).
+
+    = `add_tabm_features`(i_* 상호작용 5 + cross 2 + Stint_cat + floor/bin 4종)
+      + Driver/Compound/Race count(freq) 인코딩. yekenot 의 ① 산술상호작용 ② cross+TE
+    ③ floor/quantile 비닝 ④ count-encoding 을 기존 누수검증 빌더 조합으로 재현한다.
+
+    B1(Driver-native)은 config(`realmlp_yekenot_fe.yaml` 의 target_encode_cols 에서 Driver
+    제외 → native 임베딩)로, B2(n_refit=1)는 `realmlp_yekenot_full.yaml` 로 처리한다.
+
+    ⚠️ 누수 0: floor/bin 은 per-row 결정적(고정 클립), count-enc 는 `load_train` 전역맵
+    (타깃 미사용·train/test 동일맵). cross 의 TE 만 fold-loop `OOFTargetEncoder` 가 처리.
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        heavy-FE 가 추가된 복사본.
+    """
+    from src import data  # 지연 임포트(순환 회피)
+
+    out = add_tabm_features(df)  # i_* + cross + Stint_cat + bin_progress/laptime/tyre/deg
+    tr = data.load_train()
+    for col in ("Driver", "Compound", "Race"):
+        out[f"{col}_freq"] = out[col].astype(object).map(tr[col].value_counts()).fillna(0).astype("int32")
+    return out
+
+
+# yekenot 노트북의 floor-범주화 대상 11 수치(init num_cols) + count-enc 대상.
+_YK_NUMS = ["Year", "PitStop", "LapNumber", "Stint", "TyreLife", "Position",
+            "LapTime (s)", "LapTime_Delta", "Cumulative_Degradation", "RaceProgress", "Position_Change"]
+_FC_NAME = {  # floor-cat 컬럼명(공백/괄호 정리)
+    "Year": "fc_year", "PitStop": "fc_pitstop", "LapNumber": "fc_lapnumber", "Stint": "fc_stint",
+    "TyreLife": "fc_tyrelife", "Position": "fc_position", "LapTime (s)": "fc_laptime",
+    "LapTime_Delta": "fc_laptimedelta", "Cumulative_Degradation": "fc_cumdeg",
+    "RaceProgress": "fc_raceprogress", "Position_Change": "fc_poschange",
+    "i_lapnum_over_progress": "fc_i_lapnum_over_prog", "i_tyre_over_lapnum": "fc_i_tyre_over_lapnum",
+}
+
+
+def add_realmlp_yekenot_full_features(df: pd.DataFrame) -> pd.DataFrame:
+    """yekenot 공개 노트북 FE **충실 재현** (41 피처 = cat 20 + num 21, YEKENOT_REF.md 일치).
+
+    변형 B 의 heavy-FE 가 yekenot 풀FE 의 subset(우리 0.953637 vs yekenot 실측 0.954093,
+    동일 split paired −0.00046)이었던 격차를 메운다. yekenot `feature_engineering` 1:1 재현:
+      ① 산술 상호작용 5 (numeric)
+      ② **전수 floor-범주화**: 11 수치 + 2 상호작용 = 13 (train-fit factorize → categorical)
+      ③ count-encoding: Driver/Compound/Race + floor(Year)/floor(PitStop) = 5 (numeric)
+      ④ **data-fit quantile KBins**: RaceProgress 200 · LapTime(s) 7 = 2 (train-fit → categorical)
+      ⑤ cross: Race_Compound · Race_Year = 2 (→ fold-loop OOF TE)
+    → 신규 cat 17(13 floor + 2 KBins + 2 cross) + num 10(5 i_* + 5 count) = +27, 원본 14 = 41.
+
+    ⚠️ 누수 0: floor/count/KBins 전부 **train(`load_train`) fit·타깃 미사용**, train/test/orig 동일맵.
+    cross 의 TE 만 fold-loop `OOFTargetEncoder`. config=`realmlp_yekenot_full_fe.yaml`
+    (extra_categorical=13 floor+2 KBins, TE=cross 2, Driver native).
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        yekenot 41 피처가 추가된 복사본.
+    """
+    from sklearn.preprocessing import KBinsDiscretizer
+
+    from src import data  # 지연 임포트(순환 회피)
+
+    out = df.copy()
+    tr = data.load_train()
+
+    lt, deg = out["LapTime (s)"], out["Cumulative_Degradation"]
+    # ① 산술 상호작용 5
+    out["i_lapnum_over_progress"] = (out["LapNumber"] / (out["RaceProgress"] + 1e-6)).astype("float32")
+    out["i_tyre_over_lapnum"] = (out["TyreLife"] / out["LapNumber"].clip(lower=1)).astype("float32")
+    out["i_laptime_x_deg"] = (lt * deg).astype("float32")
+    out["i_laptime_x_absdeg"] = (lt * deg.abs()).astype("float32")
+    out["i_laptime_over_absdeg"] = (lt / (deg.abs() + 1e-6)).astype("float32")
+    # train 의 동일 상호작용(floor-cat fit 용)
+    tr_inter = {
+        "i_lapnum_over_progress": tr["LapNumber"] / (tr["RaceProgress"] + 1e-6),
+        "i_tyre_over_lapnum": tr["TyreLife"] / tr["LapNumber"].clip(lower=1),
+    }
+
+    # ② 전수 floor-범주화 (train-fit factorize, 미등장→-1)
+    for col in _YK_NUMS + ["i_lapnum_over_progress", "i_tyre_over_lapnum"]:
+        tr_vals = tr[col] if col in _YK_NUMS else tr_inter[col]
+        uniques = pd.factorize(np.floor(tr_vals))[1]
+        code_map = {u: i for i, u in enumerate(uniques)}
+        out[_FC_NAME[col]] = np.floor(out[col]).map(code_map).fillna(-1).astype("int32")
+
+    # ③ count-encoding: Driver/Compound/Race + floor(Year)/floor(PitStop) (train 빈도맵)
+    for col in ("Driver", "Compound", "Race"):
+        out[f"cnt_{col.lower()}"] = out[col].astype(object).map(tr[col].value_counts()).fillna(0).astype("int32")
+    for col in ("Year", "PitStop"):
+        cnt = np.floor(tr[col]).value_counts()
+        out[f"cnt_fc_{col.lower()}"] = np.floor(out[col]).map(cnt).fillna(0).astype("int32")
+
+    # ④ data-fit quantile KBins (train-fit)
+    for col, n_bins, name in [("RaceProgress", 200, "kb_raceprogress"), ("LapTime (s)", 7, "kb_laptime")]:
+        kb = KBinsDiscretizer(n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None)
+        kb.fit(tr[[col]])
+        out[name] = kb.transform(out[[col]]).ravel().astype("int32")
+
+    # ⑤ cross (→ fold-loop OOF TE)
+    out["Race_Compound"] = out["Race"].astype(str) + "_" + out["Compound"].astype(str)
+    out["Race_Year"] = out["Race"].astype(str) + "_" + out["Year"].astype(str)
+    return out
+
+
 def add_driver_freq(df: pd.DataFrame) -> pd.DataFrame:
     """Driver frequency(count) encoding — TE·native 와 다른 표현으로 GBDT decorrelation
     (gbdt_decorrelation_plan L1).

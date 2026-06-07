@@ -112,17 +112,92 @@ KERNELS: dict[str, dict] = {
     "origprim_xgb": dict(
         slug="origprim-xgb-cpu", title="origprim xgb cpu", display="orig-primary XGB CPU — Phase1 풀",
         exp_id="exp_origprim_xgb", trainer="train_orig_primary",
-        features="origprim", model="origprim_xgb",
+        features="origprim", model="origprim_xgb", num_boost_round_cap=8000,
         notes="orig-primary XGB raw (Phase1 pool, #038)", gpu=False, augment=False,
         deps=["xgboost", "hydra-core", "omegaconf", "python-dotenv"], deps_comment="CPU",
     ),
     "origprim_cat": dict(
         slug="origprim-cat-cpu", title="origprim cat cpu", display="orig-primary CatBoost CPU — Phase1 풀",
         exp_id="exp_origprim_cat", trainer="train_orig_primary",
-        features="origprim", model="origprim_catboost",
+        features="origprim", model="origprim_catboost", num_boost_round_cap=8000,
         notes="orig-primary CatBoost raw (Phase1 pool, #038)", gpu=False, augment=False,
         deps=["hydra-core", "omegaconf", "python-dotenv"], deps_comment="catboost Kaggle 기본",
     ),
+    "realmlp_yekenot": dict(
+        slug="realmlp-yekenot", title="realmlp yekenot",
+        display="RealMLP yekenot params 충실 복제 — Phase2 RealMLP 강화",
+        exp_id="exp_realmlp_yekenot", trainer="train_realmlp",
+        features="realmlp_fe_v2", model="realmlp_yekenot",
+        notes="RealMLP yekenot params 복제(lr0.019/sched/dropout/tfms/PLR/ls/bias/val_auc, ep5 n_ens20) vs exp_046 0.952384",
+        gpu=True, augment=True, needs_torch=True,
+        deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
+    ),
+    "realmlp_yekenot_full": dict(
+        slug="realmlp-yekenot-full", title="realmlp yekenot full",
+        display="RealMLP yekenot 완전복제 변형B (Driver-native+n_refit1+heavy-FE)",
+        exp_id="exp_realmlp_yekenot_full", trainer="train_realmlp",
+        features="realmlp_yekenot_fe", model="realmlp_yekenot_full",
+        notes="변형B: B1 Driver-native + B2 n_refit=1 + B3 heavy-FE(floor/bin+count) — yekenot 완전복제 vs yekenot 0.953377",
+        gpu=True, augment=True, needs_torch=True,
+        deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
+    ),
+    "realmlp_yekenot_fefull": dict(
+        slug="realmlp-yekenot-fefull", title="realmlp yekenot fefull",
+        display="RealMLP yekenot FE 충실재현 (41피처: full floor-cat+KBins+count)",
+        exp_id="exp_realmlp_yekenot_fefull", trainer="train_realmlp",
+        features="realmlp_yekenot_full_fe", model="realmlp_yekenot_full",
+        notes="yekenot FE 41피처 충실재현(전수 floor-cat+data-fit KBins+count) — 변형B 0.953637 격차 vs yekenot 실측 0.954093",
+        gpu=True, augment=True, needs_torch=True,
+        deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
+    ),
+    # ── split 다양성 B: XGB exp_043(2nd 강멤버)을 7/10-fold 로 (CPU, GPU한도 무관, 다른모델 fold축) ──
+    **{
+        f"xgb043_{nf}fold": dict(
+            slug=f"xgb043-{nf}fold-cpu", title=f"xgb043 {nf}fold cpu",
+            display=f"XGB exp_043 {nf}-fold (split 다양성, CPU)",
+            exp_id=f"exp_xgb043_{nf}fold", trainer="train_xgb",
+            features="xgb_combined_freq3", model="xgb", n_folds=nf,
+            notes=f"split 다양성: XGB freq3 {nf}-fold OOF (5-fold exp_043 0.9533와 직교 d_eff축, #044)",
+            gpu=False, augment=True,
+            deps=["xgboost", "hydra-core", "omegaconf", "python-dotenv"], deps_comment="CPU — torch 없음",
+        )
+        for nf in (7, 10)
+    },
+    # ── split 다양성: fefull(최강 멤버)을 7/10-fold 로 → 5-fold OOF 와 직교(d_eff 축, 8th place L5) ──
+    **{
+        f"realmlp_fefull_{nf}fold": dict(
+            slug=f"realmlp-fefull-{nf}fold", title=f"realmlp fefull {nf}fold",
+            display=f"RealMLP fefull {nf}-fold (split 다양성, d_eff 축)",
+            exp_id=f"exp_realmlp_fefull_{nf}fold", trainer="train_realmlp",
+            features="realmlp_yekenot_full_fe", model="realmlp_yekenot_full", n_folds=nf,
+            notes=f"split 다양성: fefull {nf}-fold OOF (5-fold와 직교 d_eff축, 8th place L5). vs fefull 5-fold 0.954032",
+            gpu=True, augment=True, needs_torch=True,
+            deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
+        )
+        for nf in (7, 10)
+    },
+    "tabm_fefull_fe": dict(
+        slug="tabm-fefull-fe", title="tabm fefull fe",
+        display="TabM + yekenot 풀FE (Step A, fefull 동일 FE baseline) fold0",
+        exp_id="exp_tabm_fefull_fe", trainer="train_tabm",
+        features="realmlp_yekenot_full_fe", model="tabm", model_overrides={"num_emb_type": "pwl"},
+        notes="TabM Step A: fefull 동일 41피처 FE + pwl, default 옵티마이저. 단일&corr(fefull) 측정 vs exp_044 0.95083",
+        gpu=True, augment=True, needs_torch=True, max_folds=1,
+        deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
+    ),
+    # ── TabM 옵티마이저 레시피 Step1: lr 스윕(fold0 스크린) ──
+    **{
+        f"tabm_opt_lr{tag}": dict(
+            slug=f"tabm-opt-lr{tag}", title=f"tabm opt lr{tag}",
+            display=f"TabM 옵티마이저 Step1 lr={lr} fold0 (pwl+AUC+p_drop0.05)",
+            exp_id=f"exp_tabm_opt_lr{tag}", trainer="train_tabm",
+            features="tabm_fe", model="tabm_opt", model_overrides={"lr": lr},
+            notes=f"TabM opt Step1 lr={lr} fold0 — pwl+val_auc+p_drop0.05 vs exp_038 fold0 0.95199",
+            gpu=True, augment=True, needs_torch=True, max_folds=1,
+            deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
+        )
+        for tag, lr in [("004", 0.004), ("008", 0.008), ("016", 0.016)]
+    },
 }
 
 # 기본값 — 레지스트리에서 생략 가능
@@ -130,6 +205,9 @@ DEFAULTS = dict(
     augment=True,
     max_folds=None,  # None=풀 5-fold, int=fold0 스크리닝
     num_boost_round_cap=5000,
+    needs_torch=False,  # True=pytabkit 등 torch 의존 → cell2 가 P100 cu121 torch 처리
+    model_overrides={},  # {param: value} → model yaml 로드 후 mc.params 에 주입(스윕용, 예: lr)
+    n_folds=5,          # split 다양성: 7/10-fold OOF 는 5-fold 와 직교(d_eff 축)
 )
 
 
@@ -143,6 +221,25 @@ if gpu_info.returncode == 0:
     print('GPU:', gpu_info.stdout.strip())
 else:
     print('WARNING: GPU 없음 — GPU 학습 실패 가능')
+"""
+
+
+# pytabkit 등 torch 의존 GPU 커널용 — torch import 前 실행. Kaggle 기본 GPU=P100(sm_60)이고
+# Kaggle 기본 torch 는 sm_70+ 만 빌드 → P100 이면 cu121 torch trio 재설치 후 CUDA 실연산 검증.
+_TORCH_P100 = """
+_gpu = subprocess.run(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'],
+                      capture_output=True, text=True).stdout.strip()
+print('GPU:', _gpu)
+if 'P100' in _gpu:
+    print('P100(sm_60) → cu121 torch trio 재설치 (Kaggle 기본 torch 는 sm_70+ 만)')
+    pip('torch==2.5.1', 'torchvision==0.20.1', 'torchaudio==2.5.1',
+        '--index-url', 'https://download.pytorch.org/whl/cu121')
+else:
+    print('sm_70+ → Kaggle 기본 torch 유지')
+import torch
+assert torch.cuda.is_available(), 'CUDA 불가'
+_x = torch.randn(64, 64, device='cuda'); float((_x @ _x).sum())
+print('torch', torch.__version__, '| CUDA matmul OK |', torch.cuda.get_device_name(0))
 """
 
 
@@ -202,11 +299,12 @@ print('AUG:', AUG)
     cell1 += "\nprint('--- fast-fail 가드 통과 ---')"
 
     deps_args = ", ".join(repr(d) for d in p["deps"])
+    torch_block = _TORCH_P100 if p["needs_torch"] else ""
     cell2 = f"""# 2) 프로젝트 deps 설치 ({p['deps_comment']})
 import subprocess
 def pip(*a):
     subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', *a], check=True)
-
+{torch_block}
 pip({deps_args})
 print('deps 설치 완료')"""
 
@@ -238,6 +336,8 @@ print('경로 override 완료')"""
 
     aug = "{'enabled': True, 'weight': 1.0}" if p["augment"] else "{'enabled': False, 'weight': 1.0}"
     mf = "None" if p["max_folds"] is None else str(p["max_folds"])
+    # model_overrides: model yaml 로드 후 mc.params 주입(스윕). 한 줄씩 명시 → diff·재현 명확.
+    ovr_lines = "".join(f"\nmc.params['{k}'] = {v!r}" for k, v in (p.get("model_overrides") or {}).items())
     # ⚠️ use_wandb 는 여기 하드코딩 — 파라미터 아님(헤드리스 push online 불가).
     cell4 = f"""# 4) cfg + run (풀 5-fold)
 from omegaconf import OmegaConf
@@ -247,13 +347,14 @@ CONF = Path(SRC_ROOT) / 'conf'
 EXP_ID = '{p['exp_id']}'
 NUM_BOOST_ROUND_CAP = {p['num_boost_round_cap']}
 
-mc = OmegaConf.load(CONF / 'model' / '{p['model']}.yaml')
+mc = OmegaConf.load(CONF / 'model' / '{p['model']}.yaml'){ovr_lines}
 cfg = OmegaConf.create({{
     'exp_id': EXP_ID,
     'notes': '{p['notes']}',
     'use_wandb': False,
     'seed': 42,
     'max_folds': {mf},
+    'n_folds': {p['n_folds']},
     'kill_criterion': '',
     'model': mc,
     'features': OmegaConf.load(CONF / 'features' / '{p['features']}.yaml'),

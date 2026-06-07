@@ -2,7 +2,27 @@
 
 > 모델별 단일 SSOT. 통합: `realmlp_v2_plan` + `realmlp_feature_divergence` (2026-06-05 재편).
 > 이슈 [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10)·[#12](https://github.com/buzziru/F1_Pit_Stops/issues/12) · 관련 [[decisions]] #018(모델링)·#019(FE 분기 결정)·#020(스택)·#021(v2 채택)·#013개정2(튜닝 선행)·#022/#026/#027(i_* GBDT 개방)·#029 · 실행 [[kaggle_jobs]]/[[lightning_jobs]]
-> 현 채택 = exp_046(`realmlp_fe_v2`, ep64 × **n_ens=24** 배깅, yekenot arch) 개별 OOF **0.952384**, 스택 RealMLP 멤버.
+> 현 채택 = **exp_realmlp_yekenot_fefull**(`realmlp_yekenot_full_fe`, yekenot params + n_refit=1 + 풀FE 41피처) 개별 OOF **0.954032**, 스택 최강 멤버(HC 0.467, 신기록 Private 0.95446). 이전 exp_046(0.952384) 은퇴.
+
+## yekenot 자력 재현 — 신기록 Private 0.95446 (2026-06-07, [[decisions]] #041)
+
+exp_046이 top RealMLP 미달한 원인 = **옵티마이저 레시피 미모사 + FE subset**. yekenot 노트북(실측 OOF 0.954093, `docs/idea/yekenot_oof_preds.csv`, 동일 split이라 paired 비교)을 자력 충실 재현해 −0.00046 격차를 닫음.
+
+| exp | 변경 | 단일 OOF | Δ |
+|---|---|---|---|
+| exp_046 | 아키텍처 6노브만(옵티마이저 TD default) | 0.952384 | baseline |
+| exp_realmlp_yekenot | **yekenot params**(lr0.019/lin_cos_log_15/p_drop0.05/tfms/PLR/ls/bias/val_metric=1-auc_ovr, ep5×ens20) | 0.953377 | +0.00099 |
+| exp_realmlp_yekenot_full (변형B) | +B1 Driver-native +B2 n_refit=1 +B3 heavy-FE(subset) | 0.953637 | +0.00026 |
+| **exp_realmlp_yekenot_fefull** | +**풀 FE 41피처**(전수 floor-범주화 13 + data-fit quantile KBins 2 + count 5) | **0.954032** | **+0.00040** |
+| (참고) yekenot 실측 | — | 0.954093 | gap −0.00006(노이즈 내, corr 0.997) |
+
+- **스택**: fefull HC weight **0.467**(최강 멤버) → meta-OOF 0.954357→0.954761 → **Private 0.95446**(기존 0.95405 +0.00041, 목표 0.95452까지 잔여 +0.00006).
+- ⚠️ **아래 "피처 전략/채택 결과"의 일부 결정이 본 절로 정정됨**:
+  - **Driver = OOF-TE(float) → native 임베딩**(yekenot 동일, fefull 채택). 고카디 embedding이 RealMLP+풀FE 레짐에선 유효.
+  - **floor/quantile 비닝 "기각(−0.00114)" → RealMLP 풀FE에선 채택(기여 +0.00040)**. 그 −0.00114는 **TabM 부분적용(exp_037) 한정**이었고, yekenot 풀 레시피(전수 floor-cat + data-fit KBins)는 RealMLP에서 양(陽). **시드/노이즈 아닌 실재 FE 이득**(동일 split paired).
+- **잔여 −0.00006**(fefull vs yekenot) = 시드 + 미세 FE/TE 디테일. yekenot OOF 직접 스택 +0.00029(meta 0.954802)이나 **자력 fefull로 외부의존 0**.
+- 인프라: `src/features.py::add_realmlp_yekenot_full_features`(누수0 검증) · `conf/features/realmlp_yekenot_full_fe.yaml`(Driver native) · `conf/model/realmlp_yekenot_full.yaml`(yekenot params+n_refit=1) · gen_kernel `needs_torch`/`model_overrides`. 레퍼런스 `YEKENOT_REF.md`(Private 0.95412, 41피처).
+- ⚠️ **GPU = P100 기본**(이전 "T4 고정" 정정) — 노트북 cell2가 P100 cu121 torch 재설치 처리([[notebook_conventions]] §0, gen_kernel `needs_torch`).
 
 ## 피처 전략
 

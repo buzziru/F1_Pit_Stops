@@ -92,9 +92,9 @@ data/           # train/test/sample_submission  ← git 제외
 - **Python 3.11 고정** (`.python-version`, Kaggle 노트북과 동일). ⚠️ uv 가 최신(3.14 등)을 잡으면 Hydra `@hydra.main` 등이 깨지므로 pin 유지 (decisions #008). 의존성 관리 **`uv`** (`uv sync` / `uv run`)
 - **타입힌트 필수**, **Google 스타일 docstring**, 함수당 ~50줄 권장
 - **노트북(Kaggle/Colab) 작성 규칙은 `docs/wiki/notebook_conventions.md`** — `;` 다중문 금지·논리 블록 빈 줄·셀당 단일 책임·full 전 소규모 fast-fail·의존성 누락 금지.
-- 하드코딩 금지 — 경로/시드/컬럼은 `src/config.py` 참조
+- 하드코딩 금지 — 경로/시드/컬럼 등 구조적 상수는 `src/config.py`. **⚠️ config 상수라도 로직에서 직접 참조하면(예: `x / config.N_FOLDS`) 그게 하드코딩** — 실험·전략에서 바꿀 값은 **cfg 파라미터로 받되 `config.X`를 기본값으로**(override 가능). config = 기본값 공급원, 동작 분기는 cfg. (n_folds 하드코딩이 split 다양성 막은 사례·gen_kernel cap 디커플링이 거짓 "수렴OK" 낸 사례, 2026-06-07.)
 - **재현성**: 모든 실험은 `seed_everything()` + 커밋 해시 로깅(`utils.log_experiment` 자동 기록)
-- **LGBM 경로 패리티 (필수)**: `src/train.py`(LGBM)는 ADR(회귀 안전)대로 `train_common` 과 통합 안 함 → 공통 노브가 LGBM 에 누락되는 divergence 버그 반복(feature_builder·extra_categorical_cols·max_folds, ADR #023). `train_common.py`/`train.py` 수정 시 **`uv run python scripts/check_knob_parity.py`** 로 노브 패리티 PASS 확인.
+- **노브 패리티 (필수)**: `train_common.py` 또는 `src/train.py` 수정 시 **`uv run python scripts/check_knob_parity.py`** PASS 확인 — 분리된 LGBM 경로에 공통 노브 누락 divergence 방지. (분리 배경·구체 노브·게이트 설계는 [[decisions]] #023 + 스크립트 docstring.)
 
 ## 실행 예시
 ```bash

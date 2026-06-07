@@ -5,8 +5,9 @@
 > ⚠️ 아래는 모두 **이번 세션 실제 빌드 실수**에서 도출 — 재발 방지 필수.
 
 ## 작성 = 생성기(필수, 손편집·복사 금지)
-0. **Kaggle 커널 노트북은 `kaggle/gen_kernel.py` 로 생성한다. 이전 노트북을 복사해 손으로 고치지 않는다.**
-   - **왜**: 손복사 워크플로의 2가지 재발 버그(2026-06-07) 근절 — ⓐ **2중 사본 drift**(최상위 `kaggle/<n>.ipynb` + push되는 `kaggle/<n>/<n>.ipynb` 사본이 따로 놀아 **편집이 stale 사본에 안 반영된 채 push**됨 → `use_wandb=True` 잔존 사고), ⓑ **복사-템플릿 상속**(이전 노트북 복사 후 exp_id·conf·gpu·use_wandb 중 하나를 놓쳐 **원본 설정 silent override**).
+0. **Kaggle 커널 노트북 작성 = `KERNELS` 레지스트리 등록이 1단계. `kaggle/gen_kernel.py` 로 생성한다. 이전 노트북을 복사해 손으로 고치지 않는다.**
+   - **🔑 등록 먼저(必)**: 새 커널은 **노트북을 쓰기 전에** `gen_kernel.py` 의 `KERNELS` 에 항목부터 추가하고 `python kaggle/gen_kernel.py <name>` 로 생성한다. `monitor.py` 는 **레지스트리 키(slug·exp_id)로 산출물을 회수**하므로 — **미등록 손작성 노트북은 monitor.py 가 회수 못 한다**(2026-06-07: realmlp 를 레지스트리 밖 손미러로 만들어 회수 불가 → 사후 등록 retrofit 사고). 발사 체크리스트 0순위 = `gen_kernel.py --list` 에 해당 키가 보이는지 확인.
+   - **왜**: 손복사 워크플로의 2가지 재발 버그(2026-06-07) 근절 — ⓐ **2중 사본 drift**(최상위 `kaggle/<n>.ipynb` + push되는 `kaggle/<n>/<n>.ipynb` 사본이 따로 놀아 **편집이 stale 사본에 안 반영된 채 push**됨 → `use_wandb=True` 잔존 사고), ⓑ **복사-템플릿 상속**(이전 노트북 복사 후 exp_id·conf·gpu·use_wandb 중 하나를 놓쳐 **원본 설정 silent override**), ⓒ **미등록 = monitor 회수 불가**(위).
    - **단일 진실원 = `KERNELS` 레지스트리 dict**(gen_kernel.py 내). 커널 변경 = **파라미터만 고치고 재생성**: `python kaggle/gen_kernel.py <name>`(또는 `--all`). dir 에 `<name>.ipynb` + `kernel-metadata.json` **단일쌍**만 fresh 생성(중복 사본 없음).
    - ⚠️ **`use_wandb=False` 는 파라미터가 아니라 cfg 템플릿에 하드코딩** → 헤드리스 `kernels push` 에서 **구조적으로 True 가 될 수 없음**(룰9·[[kaggle_jobs]]). wandb 필요 시 Colab/Lightning 경로.
    - 새 모델 패밀리(NN 등)는 레지스트리에 항목 추가(+필요 시 템플릿에 deps/gpu-check/import 분기 확장). 레거시 손작성 노트북(`kaggle/*.ipynb`)은 신규부터 생성기로 점진 이관.
@@ -35,6 +36,7 @@
 9. **인프라별 `use_wandb` 디폴트:** **Colab(사용자 UI 실행)·Lightning = `true`**(online, WANDB_API_KEY 선결 — Colab Secrets `userdata`/Lightning `-e`). **Kaggle 헤드리스(`kernels push`) = `false` 유지**(secret attach 미유지로 online 불가). 로컬 CPU는 기본 on.
 
 ## 발사 전 체크리스트
+- [ ] **0순위: `KERNELS` 레지스트리에 등록됨** — `python kaggle/gen_kernel.py --list` 에 키가 보임(미등록 = monitor.py 회수 불가)
 - [ ] **`gen_kernel.py` 로 생성**(손복사·손편집 아님) · dir 에 노트북+메타 단일쌍
 - [ ] `;` 다중문 없음 · 논리 블록 빈 줄 구분
 - [ ] cfg 정의 셀 1개 + run 셀 위치 정상(중복 config 셀 없음)
