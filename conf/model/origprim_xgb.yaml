@@ -1,0 +1,12 @@
+# orig-primary XGB — 원본 깊은 신호용 big max_depth (2nd place 단서). model 축 디코릴레이션.
+family: xgb
+num_boost_round: 3000
+params:
+  objective: binary:logistic
+  eval_metric: auc
+  eta: 0.03
+  max_depth: 10
+  subsample: 0.8
+  colsample_bytree: 0.8
+  tree_method: hist
+  nthread: 4

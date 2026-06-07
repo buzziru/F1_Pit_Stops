@@ -1,0 +1,10 @@
+# orig-primary CatBoost — depth 10. model 축 디코릴레이션. iterations/early_stop 는 트레이너가 주입.
+family: catboost
+num_boost_round: 3000
+params:
+  learning_rate: 0.03
+  depth: 10
+  l2_leaf_reg: 3.0
+  loss_function: Logloss
+  eval_metric: AUC
+  thread_count: 4

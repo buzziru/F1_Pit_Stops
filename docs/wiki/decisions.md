@@ -2,6 +2,24 @@
 
 > 형식: `## [번호] 제목 — 날짜` / **결정** / **이유** / **대안·트레이드오프**. 새 결정은 위에 추가.
 
+## [040] Phase1 디코릴레이션 실측 — orig-col 흡수 KILL / orig-primary 진짜 직교이나 약체 → 약체-풀+LR 전환 — 2026-06-07
+- **결정**: ① **orig-col TE(S1) 기각**(흡수). ② **orig-primary(원본 학습→대회 예측)는 채택 방향 유지** — 첫 진짜 디코릴레이션이나 약체라 단독 무가치, **약체-풀(LGBM/XGB/CatBoost)+정규화 LR**로 확장((나), Kaggle CPU 실행 중). ③ **orig FE강화(i_*) park**(분포시프트 약화).
+- **이유(실측)**:
+  - **orig-col TE 흡수**: 원본 라벨의 공유키(Compound/Stint/TyreLife…) target rate는 GBDT가 이미 native split → corr **0.99**·잔차 노이즈·stack-add +0.000012. **Heavy FE와 동일 기전**(재구성 가능 키 TE는 흡수). 원인분석: anchor 아닌 coarse group-mean·재구성 가능 키·Driver(이질 핵심키) 미전이(31↛887).
+  - **orig-primary 진짜 직교**: 원본(dense 실신호, 2nd place 단서)에 깊은 LGBM 학습→대회 예측. corr **0.923**(목표<0.97 통과)·잔차 AUC **0.526(실신호)**·R² 0.88. = orig-col/Heavy FE(잔차 0.49 노이즈)와 **질적으로 다름**. **단 단일 0.937(분포시프트 약체)** → HC weight 0, logistic stack-add +0.000013, **LB Private 0.95401(+0.00001 vs logistic[5], 디코릴레이션 LB-실재 확정)**.
+  - **FE강화 실패**: orig+i_* 깨끗한 ablation(동일 params 511·둘 다 수렴) — 단일 **−0.0082**(0.937→0.929)·더 직교(corr 0.915)·stack-add −0.000004. i_* 상호작용이 시프트 민감 → orig→대회 미전이. **"약하니까 직교 — 대회식 FE 강화는 시프트만 키워 약화."**
+- **대안·트레이드오프**: 약체-풀+LR(상위팀 186 OOF 방식 — HC는 약체 제외, LR은 추출: logistic +0.000013 vs HC 0 단서)이 유일 활용 경로. ⚠️ orig끼리 상호상관(다 원본학습)→풀 d_eff 제한 → **현실 천장 +0.0001~0.0003 « 격차 +0.00047 = contributor지 solver 아님**. 풀 무기여 시 피벗(Phase2 RealMLP @yekenot). 트레이너 `src/train_orig_primary.py`.
+
+## [039] P0 프로브 — HC 블렌더 채택(신기록 Private 0.95405) / CatBoost 멤버교체·split skip — 2026-06-07
+- **결정**: ① **Hill Climbing 블렌더 채택** — stack_v9 5멤버 HC = meta-OOF 0.954407 / **Private 0.95405(신기록, logistic 0.95400 대비 +0.00005)**, `stack_hc.csv`·`scripts/blend_hc.py`. ② CatBoost 멤버교체(exp_025→exp_036) **기각**. ③ split-config(P0b) **skip**(천장 작음·full-stack 평균 필요).
+- **이유**: ① HC(npick 60)가 logistic(0.954357)을 **OOF +0.000047** 능가, **LB도 Public/Private 동반 상승**(메타-overfit 없음) — 4th place "HC가 공개 블렌더 이김" 재현. 공짜(새 모델 0). ② exp_036(단일 0.95188 > exp_025 0.95004)이 더 강한데 스택 **−0.000019** — exp_036이 기존 풀과 **더 상관**(R² 0.987), 약한 exp_025가 더 직교. **단일품질 ≠ 스택가치**(N_eff 명제 직접 확증). ③ same-model 다른-fold OOF는 corr>0.99 예상, 8th place split 이득은 *full-stack 평균*에서 옴(비쌈) → 싼 버전 EV 낮아 skip.
+- **대안·트레이드오프**: HC는 강한 소수에 최적이나 **약체-직교 멤버를 제외**(orig-primary weight 0의 원인) → 약체 풀엔 정규화 LR 병행 필요(#040). HC 정식화 = `scripts/blend_hc.py`, `src.stack` 통합 후보. 상위팀 메타(AutoGluon/LR-logits)는 대형 풀 전제.
+
+## [038] 마무리(D) off-table + 디코릴레이션 축(orig-col)을 임계경로로 — 상위팀 분석 근거 — 2026-06-07
+- **결정**: ① **목표 0.95452 달성 전 (D) 견고화·마무리 옵션 제외**(사용자). ② **임계경로 = orig-row vs orig-col 데이터-사용 디코릴레이션 축**(#036 (C) 정제). ③ **싼 프로브 선행**(CatBoost 멤버교체·split-config 다양성·보수적 멀티블렌더) → (C) 본격. 상세 계획 = `docs/wiki/experiment_plan.md`.
+- **이유(`docs/idea/ANALYSIS_OF_SOLUTIONS.md`, 상위 4팀)**: ① **상위팀 Private 0.9549~0.9550 = +0.0009~0.0010 헤드룸 실증** → 0.95400은 *내 파이프라인* 천장이지 데이터 천장 아님(**#037 "베이즈 천장" 결론 정정**). ② **4팀 공통 디코릴레이션 소스 = 원본 이중활용**(행 증강 vs 컬럼/TE/anchor — 8th place 핵심 관찰)·**Driver_Dropped**(1st place). ③ 내 N_eff 1.03·FE소진·분산천장은 **전부 단일 데이터-레짐(행 aug) 안에서** 측정 = **orig-col 채널은 그 측정 밖 직교축**(미시도). ④ 단일모델 실측: 내 LGBM 0.95382(상위팀 +0.0008 우위)·XGB par이나 **RealMLP −0.0017·CatBoost −0.0015·TabICL −0.0015 미달** — 단, 단일모델 개선은 스택 전이 약함(#032) → **단일모델 아닌 디코릴레이션이 레버**.
+- **대안·트레이드오프**: 단일모델 레이싱(전이 약함)·Heavy FE(#037 종결)·신 백본(아키텍처 소진, big-6 겹침) 모두 열위. RealMLP 강화(@yekenot 레시피, −0.0017 격차)는 **Phase 1이 NN 디코릴레이션 기여를 보일 때만 조건부**. 리스크: 격차 작음(+0.00052)+메타-overfit(−0.00036)+합성데이터 adversarial-Driver 복잡성 → **싼 프로브로 디코릴레이션 스택전이 먼저 확인**(de-risk).
+
 ## [037] Heavy FE 대규모분기(215 조합) — stacking-channel까지 기각, FE 레버 종결 — 2026-06-07
 - **결정**: #036 (A) "대규모 Heavy FE(200~400)+feature selection" 를 **실측 시도 완료 → 기각·park.** 조합형 템플릿 215피처(키5×수치5×집계8, 피처-only)를 강정규화 GBDT 3종(LGBM/XGB/CatBoost, Kaggle CPU/GPU 오프로드)으로 OOF 생성. **FE 의 마지막 미검증 채널(대규모 표현분기→스택 decorrelation, HEAVY_FE_OPINION §5)까지 닫힘** → FE 레버 종결. 다음 레버는 **보류(사용자 결정 대기, B/C/D 미결)**.
 - **이유(사전등록 게이트, 전부 kill)**: ① 단일모델 cv 0.9509~0.9515 = 기존 멤버(~0.954)보다 **−0.0023~0.0029**(설계대로, 판정 제외). ② **stack-add = +0.000001**(logistic C=1.0). ③ **ridge-logistic 전 C(1.0~0.01)에서 +0.000000~+0.000001** = 정규화 메타(H2)도 회수 실패. ④ combo OOF 가 기존 5멤버로 **R²=0.979 설명**, 잔차 **AUC 0.488~0.494(=랜덤·신호 없음)**, 멤버/메타 corr 0.982~0.989. ⑤ logistic coef: combo lgbm 0.065·xgb −0.018·cat −0.072(메타가 거의 안 씀·음수가중). ⑥ best_iter: lgbm/xgb 수렴, cat fold3=4999 cap접촉(미완이나 무의미-기각).

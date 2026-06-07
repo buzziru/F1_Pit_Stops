@@ -1,0 +1,9 @@
+# [orig-col 디코릴레이션 채널, Phase 1 S1, decisions #038]
+# exp_043(xgb_combined_freq3) base 피처(i_* + Driver/Race_Compound/Race_Year freq-enc)
+# + orig-col TE(te_orig 7개). orig-col TE = 원본데이터(외부) 라벨 기반 고정 매핑 →
+# 외부 신호채널(GBDT 비흡수). orig-row 모델과 분리하려 augment OFF(순수 컬럼 채널).
+feature_builder: add_xgb_freq_origcol
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: [Driver, Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

@@ -1,0 +1,7 @@
+# orig-primary 트레이너(src/train_orig_primary.py)는 피처를 내부 생성
+# (_ORIG_NUM 10종 + Compound 코드, Driver/Race 제외). 이 conf 는 gen_kernel 템플릿 호환용 placeholder.
+feature_builder: none
+target_encode_cols: []
+target_encode_smoothing: 20.0
+drop_cols: []
+extra_categorical_cols: []

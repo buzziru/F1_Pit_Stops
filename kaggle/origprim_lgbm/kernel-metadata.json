@@ -1,0 +1,18 @@
+{
+  "id": "buzziru/origprim-lgbm-cpu",
+  "title": "origprim lgbm cpu",
+  "code_file": "origprim_lgbm.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "buzziru/f1-pit-src",
+    "aadigupta1601/f1-strategy-dataset-pit-stop-prediction"
+  ],
+  "competition_sources": [
+    "playground-series-s6e5"
+  ],
+  "kernel_sources": []
+}

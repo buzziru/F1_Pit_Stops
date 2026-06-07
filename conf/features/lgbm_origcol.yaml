@@ -1,0 +1,9 @@
+# [orig-col 디코릴레이션 채널, Phase 1 S1, decisions #038]
+# exp_034(lgbm_combined) base 피처(i_* 5종 + Driver OOF-TE) + orig-col TE(te_orig 7개).
+# orig-col TE = 원본데이터(외부) 라벨 기반 고정 매핑 → 대회 데이터로 재구성 불가한 외부
+# 신호채널(GBDT 비흡수). orig-row 모델과 채널 분리하려 augment OFF(순수 컬럼 채널).
+feature_builder: add_lgbm_combined_origcol
+target_encode_cols: [Driver]
+target_encode_smoothing: 20.0
+drop_cols: [Race_Compound, Race_Year, Stint_cat]
+extra_categorical_cols: [Year, Stint]

@@ -1,0 +1,14 @@
+# orig-primary LGBM — 원본 깊은 신호용 big num_leaves (V0=단일0.937 재현). family 로 트레이너 분기.
+family: lgbm
+num_boost_round: 3000
+params:
+  objective: binary
+  metric: auc
+  learning_rate: 0.03
+  num_leaves: 511
+  min_child_samples: 20
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  num_threads: 4
+  verbose: -1

@@ -1,45 +1,50 @@
 # NEXT SESSION — 세션 인수인계
 
-> 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT = GitHub Issues, 상시 가이드 = `CLAUDE.md`, 지식 = `docs/wiki/`.
+> 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT = GitHub Issues, 상시 가이드 = `CLAUDE.md`, 지식 = `docs/wiki/`. **현재값·격차 SSOT = 이 문서**.
 
-_최종 갱신: 2026-06-07 (**Heavy FE 대규모분기(215조합) 기각 → FE 레버 종결**[stacking-channel까지 닫힘, ADR #037]. **다음 레버 보류**[사용자, ADR #036 B/C/D]. **워크플로 개선 5건**: 노트북 생성기·모니터 유틸·에이전트 증거반환·SSOT drift·측정검정력 규칙.)_
+_최종 갱신: 2026-06-07 (세션2: **HC 블렌더 신기록 Private 0.95405**[블렌더 교체만, 공짜] + 상위팀 분석 기반 **디코릴레이션 축** 실측 — orig-col 흡수 KILL, **orig-primary 첫 진짜 디코릴레이션 corr 0.92이나 약체**, FE강화 실패. **orig 풀 3종 Kaggle CPU 실행 중** → 다음세션 회수+LR판정. ADR #039·#040, `experiment_plan.md`.)_
 
-## 🟢 현재 최고 — stack_v9 (Private 0.95400, 불변)
-- **🏆 stack_v9** = LGBM exp_034 + XGB exp_043 + RealMLP exp_046 + CatBoost exp_025 + TabICL exp_071 (logistic). meta-OOF **0.954357 / Private 0.95400**. 파일 `stack_v9_5mem_tabicl_logistic.csv`.
-- **목표 0.95452 → 잔여 +0.00052.** 상위 10% 라인. (이번 세션 점수 변동 없음 — Heavy FE combo 무기여)
+## 🟢 현재 최고 — stack_hc (Private 0.95405, 신기록)
+- 🏆 **stack_hc** = stack_v9 5멤버(LGBM exp_034 + XGB exp_043 + RealMLP exp_046 + CatBoost exp_025 + TabICL exp_071)를 **Hill Climbing 블렌드**. meta-OOF **0.954407 / Private 0.95405 / Public 0.95353**. 파일 `experiments/submissions/stack_hc.csv`.
+- 목표 0.95452 → 잔여 **+0.00047**. HC가 logistic(OOF 0.954357 / Private 0.95400) 대비 **+0.00005** — **블렌더 교체만으로 공짜 신기록**(P0c). HC 가중: LGBM 0.35·RealMLP 0.32·XGB 0.20·CatB 0.07·TabICL 0.05.
+- ⚠️ **HC는 인라인 스크립트 산물** → `scripts/blend_hc.py` 로 정식화함(재현용). 추후 `src.stack` 통합 후보.
 
-## 🔴 핵심 발견 (이번 세션) — FE 레버 종결 + 워크플로 경화
-> 상세 = [[decisions]] #037, `docs/feature_engineering.md` 검증로그(exp_combo), 아이디어 `docs/idea/HEAVY_FE_OPINION.md`·`OOF_POOL.md`
-- **Heavy FE 대규모분기(215 조합) 기각**: 키5×수치5×집계8 피처-only 215개 × 강정규화 GBDT 3종(Kaggle CPU/GPU 오프로드). **stack-add +0.000001**(logistic)·**ridge 전 C(1.0~0.01) +0.000000~+0.000001**(정규화 메타 H2 실패)·combo OOF **R²=0.979**(5멤버 설명)·**잔차 AUC 0.49**(노이즈)·corr 0.982~0.989. = HEAVY_FE §5 의 마지막 미검증 채널(대규모분기→스택 decorrelation)까지 닫힘 → **FE 3축(신호·분산·스택다양성) 전부 종결**.
-- **결론**: 잔여 +0.00052는 **현 표현공간 밖**(베이즈-AUC 근처) 강한 증거. + meta-overfit 경고(스택 OOF 0.95436→Private 0.95400, −0.00036).
-- **워크플로 개선 5건**(평가→처방): ① `kaggle/gen_kernel.py` 노트북 생성기(손복사 금지·2중사본 drift 근절·use_wandb 하드코딩) ② `kaggle/monitor.py` output-회수 모니터(status-grep 오판·동명파일 충돌 근절) ③ 에이전트 증거반환 규약(`.claude/agents/`) ④ SSOT drift 정리(점수 SSOT=NEXT_SESSION) ⑤ 측정검정력 규칙(CLAUDE.md: |Δ|<0.0006 단일시드 판정 금지·스택 meta-overfit 별개 레짐).
+## ⏳ 진행 중 — 다음 세션 **첫 할 일 = 회수**
+- **orig-primary 풀 3종 Kaggle CPU 실행 중**: `origprim-lgbm-cpu`·`origprim-xgb-cpu`·`origprim-cat-cpu` (fast-fail 가드 통과 확인). 원본 학습→대회 예측, augment OFF.
+- ⚠️ **세션 종료로 로컬 모니터 죽음 — 서버 커널은 계속 돎.** 회수 명령:
+  ```
+  uv run python kaggle/monitor.py origprim_lgbm origprim_xgb origprim_cat
+  ```
+  (백그라운드, OOF 출현 폴링 → `experiments/oof/exp_origprim_{lgbm,xgb,cat}.csv` + submission 자동 회수.)
+- 회수 후 판정: ① best_iter 수렴(cap 3000, **XGB/CatBoost dispatch 첫 실행이라 로그 확인**) ② 각 단일 AUC·corr·**orig끼리 상호 corr**(풀 내부 d_eff) ③ **🎯 5 대회멤버 + orig 풀 → 정규화 LR**(HC 아님 — 약체-직교 추출, 상위팀 메타) stack-add. 유의미 → LB 제출(0.95405 대비). ~0 → orig 축 저-천장 확정.
 
-## 🔜 다음 할 일 — **레버 보류(사용자)**, ADR #036 잔여 후보 (FE=A 종결)
-- **(B) 훼손 고-importance 피처 교정** — `LapTime_Delta`(gain879, imp 3위) gap-정규화 *값* 재계산(플래그 is_consec_lap은 실패, 값 교정 미시도). ⚠️ FE 채널 ADR #037로 기각 — 천장 작을 듯.
-- **(C) 외부데이터** — 1st place 실제 돌파구(원본 추가 + Driver 분포 adversarial). **유일하게 실재 논거**이나 高노력·高분산·합성데이터 복잡성. [[external_data_augmentation]] 재검토. **바운드된 프로브 + kill 게이트 사전등록 권고.**
-- **(D) stack_v9 견고화/마무리** — seed-avg robustness 등, 상위10% 락인. **어시스턴트 EV read = (D) EV-max**(FE 3축+분산 소진 = 잔여≈베이즈 천장).
-- ⚠️ **어시스턴트 read**: (D) 또는 (C 프로브). 단 **결정 주체=사용자**. 규칙대로 보고+의견만, 임의 발사 금지.
+## 🔴 이번 세션 발견 (상위팀 분석 → 디코릴레이션 축)
+> 근거 `docs/idea/ANALYSIS_OF_SOLUTIONS.md`, 계획 `docs/wiki/experiment_plan.md`, [[decisions]] #038·#039·#040
+- **단일모델은 레버 아님 재확인**: 내 LGBM 0.95382(상위팀 2nd +0.0008 우위)·XGB par. RealMLP −0.0017·CatB −0.0015 미달이나 스택 전이 약함(#032). 4팀 공통: 순위=logit 앙상블 다양성.
+- **천장 정정**: 상위팀 Private 0.9549~0.9550 = **+0.0009 헤드룸 실재** → 0.95400은 *파이프라인* 천장(데이터 천장 아님). #037 베이즈천장 결론 폐기.
+- **P0 프로브**: HC 채택(신기록 0.95405) / CatBoost 멤버교체 exp_025→exp_036 **KILL**(약체 exp_025가 더 직교, 단일품질≠스택가치) / split skip(천장 작음).
+- **Phase1 S1 orig-col TE = KILL**(흡수): 원본 라벨 공유키 target rate는 GBDT가 이미 split → corr 0.99·잔차 노이즈. Heavy FE와 동일 기전(재구성 가능 키).
+- **orig-primary = 첫 진짜 디코릴레이션**: corr **0.923**·잔차 AUC **0.526(실신호)**. 단 단일 **0.937(약체, 원본dense→대회sparse 분포시프트)** → HC weight 0, logistic stack-add +0.000013, **LB Private 0.95401(+0.00001 vs logistic[5])**. **FE강화(i_*) 실패**(깨끗한 ablation 동일params: 단일 −0.008, 더 직교하나 약화).
+
+## 🔜 다음 할 일 (우선순위)
+1. **orig 풀 회수**(위 ⏳) → **풀 + 정규화 LR** stack-add 판정.
+2. 풀 유의미 → 확장(robust-피처-only 변형 등)·LB 제출. **무의미 → orig-primary 보조 편입**(LB+0.00001 실재) + **피벗**.
+3. **피벗 후보**(orig 저-천장 시): **Phase2 RealMLP @yekenot 강화**(−0.0017 단일격차, 단 전이 불확실) · 미시도 모델 패밀리 · 또는 상위팀 전체 기계(대형 OOF풀 + AutoGluon/LR 메타, 큰 투자).
+4. ⚠️ **현실 인식**: orig 축 천장 ~+0.0001~0.0003(약체+상호상관) « 격차 +0.00047 = **단독 solver 아닌 contributor**. (D)마무리는 목표 전 OFF(#038) 유지하되, 트랙-천장 게이트로 과투자 가드.
 
 ### 🅿️ Parked / 결론 (재시도 금지)
-- **Heavy FE 전부 종결**(검증로그): 재정규화·시계열·Heavy25·횡단면11 + **대규모분기 215조합(stacking-channel, ADR #037)**. FE 증분은 현 LGBM(Driver TE+i_*)에서 흡수, 대규모분기 OOF도 고상관 블록 붕괴.
-- **Driver-drop XGB 디코릴레이션**(#035, corr 0.99). 변산 천장(#034 N_eff 1.03).
-- (이전) 축① GBDT 코어분기·TabM 5번째·RealMLP n_refit=1·CatBoost 전부·ep/lr·seed-avg — [[decisions]] #028~#034.
+- **orig-col TE 흡수**(#040, 공유키 재구성 가능). **CatBoost 멤버교체 KILL**(약체가 더 직교). **orig FE강화 i_*** (분포시프트 약화). **split-config skip**(천장 작음).
+- (이전) **FE 8전 종결**(#037 Heavy FE 포함). 분산천장 N_eff 1.03(#034). 단일모델 레이싱. 축①·TabM·RealMLP n_refit 등 #028~#034.
 
 ## ⚙️ 인프라·운영
-- **🆕 노트북 생성기 `kaggle/gen_kernel.py`**: `KERNELS` 레지스트리(SSOT) + 단일 템플릿 → `kaggle/<name>/{노트북,메타}` 단일쌍 fresh 생성. **손복사 금지**([[notebook_conventions]] §0·[[kaggle-kernel-generator]]). 신규 커널 = 레지스트리 항목 추가 후 `python kaggle/gen_kernel.py <name>`.
-- **🆕 모니터 `kaggle/monitor.py`**: `uv run python kaggle/monitor.py <name> ...`(백그라운드). output-회수→OOF 출현으로 완료감지(status 파싱 금지), oof/·submissions/·logs/ 명시경로 회수. /tmp 스크립트 폐기.
-- **Kaggle CPU 오프로드**([[feature-smith-kaggle-cpu]]): 풀 5-fold A/B를 Kaggle CPU 커널로(로컬 점유0·GPU쿼터 미소모·동시실행). ⚠️ Δ측정 환경 일치.
-- 기존 GPU SSOT 3종: Kaggle T4 [[kaggle_jobs]]·Lightning L4 [[lightning_jobs]]·Colab L4 [[colab_jobs]].
-- 스태킹: `uv run python -m src.stack --members ... --tag NAME`(logistic). 잔차상관: `scripts/diag_resid_corr.py`.
-
-## ✅ 완료 (2026-06-07 세션)
-- **Heavy FE combo 215 실측·기각**(Kaggle CPU lgbm/xgb + GPU cat): 빌더 `add_heavy_fe_combo`(src/features.py)·conf `{lgbm,xgb,catboost}_combo.yaml`·누수검증 `scripts/verify_combo_leak.py`(PASS). OOF/submission `experiments/` 보존. ADR #037.
-- **버그 3건 수정**: ⓐ wandb headless(use_wandb=false) ⓑ 노트북 2중사본 drift ⓒ `IntCastingNaNError`(증강 소스 Compound NaN → combo int캐스팅 fillna(0)). + 모니터 status-grep 오판.
-- **워크플로 개선 5건**(위 🔴). 문서: `notebook_conventions.md` §0+교훈4, `kaggle_jobs.md` 교훈4, `CLAUDE.md` 검증전략, 메모리 [[kaggle-kernel-generator]] 신규·[[kaggle-gpu-wandb-on]]·[[feature-smith-kaggle-cpu]]·[[target-score]] 갱신.
+- **🆕 orig-primary 트레이너** `src/train_orig_primary.py` — 원본 학습→대회 예측(5-fold-on-orig 평균), `cfg.model.family`로 lgbm/xgb/catboost 분기, Driver/Race 제외(미전이). conf `model/origprim_{lgbm,xgb,catboost}.yaml`·`features/origprim.yaml`. gen_kernel 레지스트리 `origprim_{lgbm,xgb,cat}`.
+- **🆕 HC 블렌더** `scripts/blend_hc.py` — 멤버 OOF+submission → HC 가중 → 제출 생성. 현 신기록 재현.
+- 노트북 생성기 `kaggle/gen_kernel.py`(손복사 금지 [[kaggle-kernel-generator]]) · 모니터 `kaggle/monitor.py`(output-회수). Kaggle CPU 오프로드 [[feature-smith-kaggle-cpu]].
+- 스택: `src.stack`(logistic). HC·LR-pool은 현재 인라인/`blend_hc.py`.
+- ⚠️ **로컬 동시 LGBM 금지**(OpenMP 경합 hang 실측) — 순차 또는 Kaggle CPU 병렬.
 
 ## 🔗 열린 이슈
-- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) [model] M4 앙상블 — stack_v9 Private 0.95400. 잔여=**레버 결정(ADR #036 B/C/D)→목표 0.95452**.
-- [#14](https://github.com/buzziru/F1_Pit_Stops/issues/14)·[#15](https://github.com/buzziru/F1_Pit_Stops/issues/15) 축②/③ 새 멤버 — 보조 강등(천장 소진).
-- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생 피처 — **FE 레버 종결**(ADR #037, Heavy FE 8전 전부 기각). 재오픈은 (B) 값교정 시만.
+- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) 앙상블 — stack_hc Private **0.95405**. 잔여 **+0.00047** = orig 풀+LR / 피벗(Phase2).
+- [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생피처 — FE 종결(#037).
 
 repo: https://github.com/buzziru/F1_Pit_Stops

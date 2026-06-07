@@ -72,6 +72,57 @@ KERNELS: dict[str, dict] = {
         deps=["hydra-core", "omegaconf", "python-dotenv"],
         deps_comment="catboost는 Kaggle 기본 설치됨",
     ),
+    # Phase 1 S1 — orig-col 디코릴레이션 채널 (augment OFF = 순수 컬럼 채널)
+    "origcol_lgbm": dict(
+        slug="origcol-lgbm-cpu",
+        title="origcol lgbm cpu",
+        display="LGBM orig-col CPU — Phase1 디코릴레이션",
+        exp_id="exp_origcol_lgbm",
+        trainer="train",
+        features="lgbm_origcol",
+        model="lgbm_tuned",
+        notes="orig-col channel LGBM augment-off (Phase1 S1, #038)",
+        gpu=False,
+        augment=False,
+        deps=["lightgbm==4.6.0", "hydra-core", "omegaconf", "python-dotenv"],
+        deps_comment="CPU — torch 없음",
+    ),
+    "origcol_xgb": dict(
+        slug="origcol-xgb-cpu",
+        title="origcol xgb cpu",
+        display="XGB orig-col CPU — Phase1 디코릴레이션",
+        exp_id="exp_origcol_xgb",
+        trainer="train_xgb",
+        features="xgb_origcol",
+        model="xgb",
+        notes="orig-col channel XGB augment-off (Phase1 S1, #038)",
+        gpu=False,
+        augment=False,
+        deps=["xgboost", "hydra-core", "omegaconf", "python-dotenv"],
+        deps_comment="CPU — torch 없음",
+    ),
+    # Phase 1 — orig-primary 디코릴레이션 풀 (원본 학습→대회 예측, augment OFF)
+    "origprim_lgbm": dict(
+        slug="origprim-lgbm-cpu", title="origprim lgbm cpu", display="orig-primary LGBM CPU — Phase1 풀",
+        exp_id="exp_origprim_lgbm", trainer="train_orig_primary",
+        features="origprim", model="origprim_lgbm",
+        notes="orig-primary LGBM raw (Phase1 pool, #038)", gpu=False, augment=False,
+        deps=["lightgbm==4.6.0", "hydra-core", "omegaconf", "python-dotenv"], deps_comment="CPU",
+    ),
+    "origprim_xgb": dict(
+        slug="origprim-xgb-cpu", title="origprim xgb cpu", display="orig-primary XGB CPU — Phase1 풀",
+        exp_id="exp_origprim_xgb", trainer="train_orig_primary",
+        features="origprim", model="origprim_xgb",
+        notes="orig-primary XGB raw (Phase1 pool, #038)", gpu=False, augment=False,
+        deps=["xgboost", "hydra-core", "omegaconf", "python-dotenv"], deps_comment="CPU",
+    ),
+    "origprim_cat": dict(
+        slug="origprim-cat-cpu", title="origprim cat cpu", display="orig-primary CatBoost CPU — Phase1 풀",
+        exp_id="exp_origprim_cat", trainer="train_orig_primary",
+        features="origprim", model="origprim_catboost",
+        notes="orig-primary CatBoost raw (Phase1 pool, #038)", gpu=False, augment=False,
+        deps=["hydra-core", "omegaconf", "python-dotenv"], deps_comment="catboost Kaggle 기본",
+    ),
 }
 
 # 기본값 — 레지스트리에서 생략 가능

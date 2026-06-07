@@ -599,6 +599,170 @@ def add_heavy_fe_combo(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([out, block], axis=1)
 
 
+# ===== orig-col 디코릴레이션 채널 (Phase 1 S1, decisions #038) =====
+# 원본데이터(load_source_augmentation, 101371행, 타깃률 0.2548)의 라벨로 계산한
+# target-encoding 을 공유 키로 대회 행에 merge. 대회 데이터로 재구성 불가한 외부 신호
+# 채널이라 GBDT 흡수 안 됨(Heavy FE = 대회피처 집계라 흡수됐던 것과 정반대).
+#
+# 누수안전 논거:
+#   - orig-col TE 는 **외부(원본) 라벨** 사용 → 대회 행의 자기 라벨 미사용 → fold-내
+#     OOF 불요(Driver OOF TE 와 다름; 그건 대회 라벨이라 fold-내 필수였음). 고정 매핑.
+#   - 원본 행은 대회 train 과 물리적으로 disjoint(행 해시 overlap 0, verify_origcol_leak.py).
+#   - 버킷 경계는 원본에서 1회 fit(qcut 경계 저장) 후 train/test 동일 적용 → per-row 누수 없음.
+#   - 합성 Driver(원본 31개 외)·미존재 키 → global prior(0.2548) fallback.
+_ORIG_GLOBAL_PRIOR: float = 0.2548  # 원본 PitNextLap 평균 (소그룹 m-estimate prior)
+_ORIG_M: float = 20.0  # m-estimate 평활 강도 (소그룹 노이즈 완화)
+_ORIG_N_BUCKETS: int = 10  # 연속 키 분위 버킷 수
+# 캐시: (버킷 경계, 키별 smoothed TE 맵) — 원본 1회 fit 후 재사용.
+_ORIG_FIT_CACHE: dict[str, object] | None = None
+
+# 연속 키 → 버킷 컬럼 정의: (출력버킷명, 소스컬럼)
+_ORIG_BUCKET_KEYS: list[tuple[str, str]] = [
+    ("TyreLife_bucket", "TyreLife"),
+    ("RaceProgress_bucket", "RaceProgress"),
+    ("LapNumber_bucket", "LapNumber"),
+]
+# TE 대상 키 정의: te_orig_<name> → 그룹 컬럼 리스트 (버킷명은 위에서 생성)
+_ORIG_TE_KEYS: dict[str, list[str]] = {
+    "Compound": ["Compound"],
+    "Stint": ["Stint"],
+    "Compound_Stint": ["Compound", "Stint"],
+    "TyreLife_bucket": ["TyreLife_bucket"],
+    "RaceProgress_bucket": ["RaceProgress_bucket"],
+    "LapNumber_bucket": ["LapNumber_bucket"],
+    "Driver": ["Driver"],
+}
+
+
+def _smoothed_te(src: pd.DataFrame, kcols: list[str], y: pd.Series) -> pd.Series:
+    """m-estimate 평활 target encoding (그룹 평균을 prior 쪽으로 수축).
+
+    te = (n * mean + m * prior) / (n + m), prior=_ORIG_GLOBAL_PRIOR, m=_ORIG_M.
+
+    Args:
+        src: 키 컬럼을 포함한 원본 DataFrame.
+        kcols: 그룹 키 컬럼 리스트.
+        y: src 와 같은 index 의 타깃 Series.
+
+    Returns:
+        키 → smoothed TE 값 Series (index = 그룹 키, 다중 키는 MultiIndex).
+    """
+    keys = [src[c].astype(object) for c in kcols]  # category→object 로 풀어 매핑 정렬 안정화
+    agg = y.groupby(keys, observed=True).agg(["mean", "count"])
+    sm = (agg["count"] * agg["mean"] + _ORIG_M * _ORIG_GLOBAL_PRIOR) / (agg["count"] + _ORIG_M)
+    return sm
+
+
+def _fit_orig_col() -> dict[str, object]:
+    """원본데이터에서 버킷 경계와 키별 smoothed TE 맵을 1회 fit 한다 (캐시).
+
+    누수안전: 원본(외부) 라벨만 사용하고 대회 행은 보지 않는다. 버킷 경계(qcut)와
+    TE 맵은 고정 매핑으로 train/test 에 동일 적용된다.
+
+    Returns:
+        {'edges': {버킷명: np.ndarray}, 'maps': {te_name: pd.Series(키→TE)}}.
+    """
+    from src import data  # 지연 임포트(순환 회피)
+
+    src = data.load_source_augmentation().copy()
+    y = src[config.TARGET_COL].astype(float)
+
+    # 1) 연속 키 버킷 경계 fit (qcut 경계 저장) + 원본에 버킷 컬럼 부여.
+    edges: dict[str, np.ndarray] = {}
+    for bname, scol in _ORIG_BUCKET_KEYS:
+        _, bins = pd.qcut(src[scol], _ORIG_N_BUCKETS, retbins=True, duplicates="drop")
+        bins = bins.copy()
+        bins[0], bins[-1] = -np.inf, np.inf  # 경계 밖(test) 흡수
+        edges[bname] = bins
+        src[bname] = pd.cut(src[scol], bins=bins, labels=False).astype("int16")
+
+    # 2) 키별 smoothed TE 맵 fit (원본 라벨).
+    maps: dict[str, pd.Series] = {}
+    for te_name, kcols in _ORIG_TE_KEYS.items():
+        maps[te_name] = _smoothed_te(src, kcols, y)
+    return {"edges": edges, "maps": maps}
+
+
+def add_orig_col_features(df: pd.DataFrame) -> pd.DataFrame:
+    """orig-col TE 디코릴레이션 채널 — 원본 라벨 기반 외부 TE 를 대회 행에 merge.
+
+    원본데이터(101371행, 대회와 물리적 disjoint)의 라벨로 계산한 m-estimate smoothed
+    target-encoding 을 공유 키로 현재 df 에 매핑한다. 7개 키(Compound · Stint ·
+    (Compound,Stint) · TyreLife_bucket · RaceProgress_bucket · LapNumber_bucket ·
+    Driver) → te_orig_<key> 7개 컬럼.
+
+    누수안전: 외부(원본) 라벨만 사용 → 대회 자기 라벨 미참조 → fold-내 OOF 불요(고정
+    매핑). 버킷 경계·TE 맵은 원본에서 1회 fit 해 train/test/source 동일 적용. 합성
+    Driver/미존재 키·NaN 키 → global prior(0.2548) fallback. augment.enabled=true 로
+    원본 행이 _build 를 타도 동일 외부 매핑이라 안전(자기 라벨 미사용).
+
+    Args:
+        df: build_features 적용 후 DataFrame (원본 컬럼 포함; train/test/source 공용).
+
+    Returns:
+        te_orig_<key> 7개(float32) 가 추가된 복사본.
+    """
+    global _ORIG_FIT_CACHE
+    if _ORIG_FIT_CACHE is None:
+        _ORIG_FIT_CACHE = _fit_orig_col()
+    edges = _ORIG_FIT_CACHE["edges"]  # type: ignore[index]
+    maps = _ORIG_FIT_CACHE["maps"]    # type: ignore[index]
+
+    out = df.copy()
+
+    # 1) 연속 키 버킷 부여 (원본 fit 경계로 cut; 경계 밖은 ±inf 로 흡수).
+    for bname, scol in _ORIG_BUCKET_KEYS:
+        out[bname] = pd.cut(out[scol], bins=edges[bname], labels=False).astype("int16")
+
+    # 2) 키별 te_orig 매핑 (미존재 키/NaN → global prior fallback).
+    for te_name, kcols in _ORIG_TE_KEYS.items():
+        m = maps[te_name]
+        if len(kcols) == 1:
+            keyser = out[kcols[0]].astype(object)
+            te = keyser.map(m)
+        else:
+            # 다중 키: MultiIndex map. category dtype 키는 object 로 풀어 튜플 정렬.
+            tup = pd.MultiIndex.from_arrays([out[c].astype(object) for c in kcols])
+            te = pd.Series(m.reindex(tup).to_numpy(), index=out.index)
+        out[f"te_orig_{te_name}"] = (
+            te.astype("float64").fillna(_ORIG_GLOBAL_PRIOR).astype("float32")
+        )
+
+    # 3) 중간 버킷 컬럼 제거 (te_orig 만 피처로 노출).
+    out = out.drop(columns=[bname for bname, _ in _ORIG_BUCKET_KEYS])
+    return out
+
+
+def add_lgbm_combined_origcol(df: pd.DataFrame) -> pd.DataFrame:
+    """lgbm_combined(exp_034) FE + orig-col TE 채널 (decisions #038, augment OFF).
+
+    add_realmlp_features(i_* 상호작용 5종 + cross + Stint_cat) 위에 add_orig_col_features
+    (te_orig 7개)를 얹는다. conf 노브는 exp_034 와 동일(target_encode=[Driver]).
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        add_realmlp_features + te_orig 7개가 추가된 복사본.
+    """
+    return add_orig_col_features(add_realmlp_features(df))
+
+
+def add_xgb_freq_origcol(df: pd.DataFrame) -> pd.DataFrame:
+    """xgb_combined_freq3(exp_043) FE + orig-col TE 채널 (decisions #038, augment OFF).
+
+    add_xgb_freq_features(i_* + Driver/Race_Compound/Race_Year freq-enc) 위에
+    add_orig_col_features(te_orig 7개)를 얹는다. conf 노브는 exp_043 와 동일.
+
+    Args:
+        df: build_features 적용 후 DataFrame.
+
+    Returns:
+        add_xgb_freq_features + te_orig 7개가 추가된 복사본.
+    """
+    return add_orig_col_features(add_xgb_freq_features(df))
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """모델에 투입할 피처 컬럼 목록을 반환한다 (id, target 제외).
 
