@@ -109,7 +109,8 @@ def run(cfg: DictConfig) -> dict[str, Any]:
     best_iters: list[int] = []
 
     # max_folds: 동일 분할의 앞 N fold 만 실행 (스크리닝용, train_common 과 동일 — ADR #022 후속 divergence 보강)
-    folds = cv.get_folds(y)
+    n_folds = int(cfg.get("n_folds", config.N_FOLDS))  # split 다양성(7/10-fold) 지원, 기본 5 (train_common 패리티)
+    folds = cv.get_folds(y, n_folds=n_folds)
     max_folds = cfg.get("max_folds", None)
     if max_folds:
         folds = folds[:max_folds]
@@ -153,7 +154,7 @@ def run(cfg: DictConfig) -> dict[str, Any]:
             ],
         )
         oof[va_idx] = model.predict(x_va, num_iteration=model.best_iteration)
-        test_pred += model.predict(x_te, num_iteration=model.best_iteration) / config.N_FOLDS
+        test_pred += model.predict(x_te, num_iteration=model.best_iteration) / n_folds
         score = roc_auc_score(y.iloc[va_idx], oof[va_idx])
         fold_scores.append(score)
         best_iters.append(int(model.best_iteration))

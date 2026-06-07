@@ -260,7 +260,9 @@ def add_xgb_freq_features(df: pd.DataFrame) -> pd.DataFrame:
         "Race_Year": (tr["Race"].astype(str) + "_" + tr["Year"].astype(str)).value_counts(),
     }
     for col in ("Driver", "Race_Compound", "Race_Year"):
-        out[f"{col}_freq"] = out[col].map(maps[col]).fillna(0).astype("int32")
+        # ⚠️ category dtype(Driver)면 .map() 결과가 categorical 유지 → .fillna(0) 신규카테고리 에러
+        # (pandas 엄격버전, Kaggle). add_driver_freq 와 동일하게 astype(object) 로 회피.
+        out[f"{col}_freq"] = out[col].astype(object).map(maps[col]).fillna(0).astype("int32")
     return out
 
 

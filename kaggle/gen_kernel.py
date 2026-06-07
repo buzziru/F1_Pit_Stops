@@ -150,6 +150,19 @@ KERNELS: dict[str, dict] = {
         gpu=True, augment=True, needs_torch=True,
         deps=["pytabkit", "hydra-core", "python-dotenv"], deps_comment="GPU pytabkit — P100 cu121 torch 처리",
     ),
+    # ── split 다양성 B: LGBM exp_034(최강 GBDT 0.9538)을 7/10-fold 로 (CPU, train.py n_folds) ──
+    **{
+        f"lgbm034_{nf}fold": dict(
+            slug=f"lgbm034-{nf}fold-cpu", title=f"lgbm034 {nf}fold cpu",
+            display=f"LGBM exp_034 {nf}-fold (split 다양성, CPU)",
+            exp_id=f"exp_lgbm034_{nf}fold", trainer="train",
+            features="lgbm_combined", model="lgbm", n_folds=nf,
+            notes=f"split 다양성: LGBM combined {nf}-fold OOF (5-fold exp_034 0.9538와 직교 d_eff축, #044)",
+            gpu=False, augment=True,
+            deps=["lightgbm==4.6.0", "hydra-core", "omegaconf", "python-dotenv"], deps_comment="CPU — torch 없음",
+        )
+        for nf in (7, 10)
+    },
     # ── split 다양성 B: XGB exp_043(2nd 강멤버)을 7/10-fold 로 (CPU, GPU한도 무관, 다른모델 fold축) ──
     **{
         f"xgb043_{nf}fold": dict(

@@ -20,7 +20,8 @@
 | stack_hc_yk_orig | RealMLP→yekenot params(1차)+orig-lgbm | 0.954447(HC OOF) | 0.95405(동률) |
 | stack_hc_fefull_orig | **RealMLP→fefull**(yekenot FE 자력재현, #041)+orig-lgbm, HC | 0.954761(HC OOF) | 0.95446 |
 | stack_ridge_pool | **68-OOF 풀 ridge-LR-logits**(C=0.003, 메타러너 HC→ridge) | 0.954824 | 0.95449 |
-| **stack_ridge_split**(현 best) | **+fefull 7/10-fold split다양성** → 70-OOF ridge (#044) | **0.954978** | **🎯 0.95458**(목표 0.95452 초과) |
+| stack_ridge_split | +fefull 7/10-fold split다양성 → 70-OOF ridge (#044) | 0.954978 | 🎯 0.95458 |
+| **stack_ridge_split2**(현 best) | **+xgb043 7/10-fold split** → 72-OOF ridge | **0.955005** | **🎯 0.95460**(목표 +0.00008, 상위5.2%) |
 
 - **2026-06-07 🎯 목표 초과 0.95458**(#044): **split 다양성**(fefull 7/10-fold, fold-구조 직교축 잔차 0.53)이 d_eff 1.08 붕괴를 돌파 → ridge 70-OOF 풀 meta-OOF 0.954978 → Private 0.95458(+0.00009 vs ridge-pool). 메타러너 **HC→ridge-LR-logits**(약체-직교 추출). 궤적 0.95446→0.95449→0.95458.
 - **2026-06-07 신기록 0.95446**(목표 0.95452까지 +0.00006): RealMLP를 **fefull**(yekenot 옵티마이저+FE 자력재현, 단일 0.954032)로 교체 → HC weight 0.467 최강 멤버. 기존 0.95405 대비 **+0.00041**(메타-OOF 0.954357→0.954761, in-sample→Private −0.00030 메타낙관). 상세 [[realmlp]]·[[decisions]] #041. orig-lgbm은 marginal 멤버(+0.00001, #042).
