@@ -8,7 +8,7 @@ _최종 갱신: 2026-06-07 (세션3: **🎯 목표 돌파 Private 0.95460** > �
 - 🏆 **stack_ridge_split2** = **72-OOF 풀 ridge-LR-logits(C=0.003)** = split_split(70) + **xgb043 7/10-fold**. meta-OOF 0.955005 / **Private 0.95460 / Public 0.95437**. 파일 `experiments/submissions/stack_ridge_split2.csv`.
 - split 멤버(fefull 7/10·xgb043 7/10)가 ridge 상위 가중. 직전 stack_ridge_split(70-OOF, 0.95458)·ridge_pool(0.95449)·hc_fefull_orig(0.95446) 보존. 생성=인라인 스크립트(정식화 후보).
 - ⚠️ **split 다양성 수확체감 확정**: fefull split +0.00009 → xgb split +0.00002(잔차 0.52). 추가 fold/모델 <+0.00001 = 실질 천장. 상위팀 0.9549까지 +0.0003은 미발견 d_eff 필요.
-- **목표 0.95452 → 초과 +0.00008.** 궤적: 0.95405(시작)→0.95446(fefull HC)→0.95449(ridge 풀)→0.95458(fefull split)→**0.95460(+xgb split)**. **📊 158/3023팀 상위 5.2%**. 상위팀 0.9549~0.9550(≈top1~2%)까지 +0.0003 = 미발견 d_eff 필요(split은 천장).
+- **목표 0.95452 → 초과 +0.00008.** 궤적: 0.95405(시작)→0.95446(fefull HC)→0.95449(ridge 풀)→0.95458(fefull split)→**0.95460(+xgb split)**. **📊 ~148/3023팀 상위 4.9%**. 상위팀 0.9549~0.9550(≈top1~2%)까지 +0.0003 = 미발견 d_eff 필요(split은 천장).
 - 직전 기록 **stack_hc_fefull_orig**(HC, Private 0.95446)·**stack_ridge_pool**(68-OOF ridge, 0.95449)도 보존.
 - **3대 레버**: ① fefull(yekenot 자력재현 0.954032, 스택 최강) ② **ridge 메타**(약체-직교 추출, HC>ridge: 0.95446→0.95449) ③ **split 다양성**(fold-구조 직교축, +0.00009, d_eff 1.08 붕괴 돌파).
 
@@ -27,7 +27,7 @@ _최종 갱신: 2026-06-07 (세션3: **🎯 목표 돌파 Private 0.95460** > �
 ## 🔜 다음 할 일 (목표 달성 후, 상위팀 0.9549 도전 시)
 - 목표 0.95452 **달성·초과(0.95460)**. 추가 push는 **미발견 d_eff축**이 필요(split·피처·단일모델 다 천장 확인).
 - 후보(불확실·역사적 난제): ① 신 패밀리(AutoGluon·MLP-PLR — inductive bias 진짜 다른 것) ② heavy-FE×NN(GBDT 흡수했으나 NN은 다를 수 — combo×RealMLP, 잔차>0.5 게이트) ③ fefull multi-seed(노이즈↓) ④ yekenot OOF 직접 편입(test 예측 확보 시 +0.00004).
-- ⚠️ 전부 +0.0001 미만 체감 — 마무리(현 0.95460 상위5.2% 확정) vs 도전은 사용자 결정.
+- ⚠️ 전부 +0.0001 미만 체감 — 마무리(현 0.95460 상위4.9% 확정) vs 도전은 사용자 결정.
 
 ### 🅿️ Parked / 결론 (재시도 금지)
 - **orig 풀 xgb/cat 별도멤버**(#042, redundant). **TabM lr↑**(#043, 역반응). **orig-col TE 흡수**·**CatBoost 멤버교체**·**orig FE강화**(#040).
@@ -41,7 +41,7 @@ _최종 갱신: 2026-06-07 (세션3: **🎯 목표 돌파 Private 0.95460** > �
 - 참고: yekenot 원본 OOF·메타 = `docs/idea/yekenot_oof_preds.csv`·`YEKENOT_REF.md`(Private 0.95412, 41피처).
 
 ## 🔗 열린 이슈
-- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) 앙상블 — **stack_ridge_split2 Private 0.95460(목표 초과·상위5.2%)**. split 천장, 추가는 미발견 d_eff축.
+- [#10](https://github.com/buzziru/F1_Pit_Stops/issues/10) 앙상블 — **stack_ridge_split2 Private 0.95460(목표 초과·상위4.9%)**. split 천장, 추가는 미발견 d_eff축.
 - [#7](https://github.com/buzziru/F1_Pit_Stops/issues/7) 파생피처 — yekenot FE 자력재현(#041).
 
 repo: https://github.com/buzziru/F1_Pit_Stops

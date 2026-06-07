@@ -11,7 +11,7 @@
 | `docs/{eda,feature_engineering,modeling}.md` | 영역별 살아있는 작업 노트 | 갱신형 |
 
 ## 위키 구성
-- [`postmortem.md`](postmortem.md) — 🏁 **대회 전체 회고 + 다음 대회 재사용 템플릿** (구조/성능경로/유효·실패 레버/Claude Code 활용/체크리스트). Private 0.95458, 상위 5.2%.
+- [`postmortem.md`](postmortem.md) — 🏁 **대회 전체 회고 + 다음 대회 재사용 템플릿** (구조/성능경로/유효·실패 레버/Claude Code 활용/체크리스트). Private 0.95460, 상위 4.9%.
 - [`decisions.md`](decisions.md) — 의사결정 기록 (ADR-lite). 왜 그렇게 정했는지.
 - `experiments/` — 주요 실험 회고 (가설 → 결과 → 결론). exp 단위로 추가.
   - [`exp_002_003_is_stable_delta.md`](experiments/exp_002_003_is_stable_delta.md) — is_stable_delta ablation (기각): 낮은 corr≠무용, 이진화 정보손실
