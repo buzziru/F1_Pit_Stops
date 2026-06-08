@@ -21,7 +21,7 @@ from scipy.optimize import minimize
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss, roc_auc_score
 
-from src import config, cv, data
+from src import config, cv, data, utils
 
 DEFAULT_MEMBERS = ["exp_016", "exp_019", "exp_025_cat_yearcat", "exp_023"]
 EQUAL_3WAY = 0.951642  # 현 제출 최고(균등) 비교 기준
@@ -40,10 +40,10 @@ def _load(members: list[str]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     oof_cols, test_cols = [], []
     for m in members:
-        o = pd.read_csv(config.OOF_DIR / f"{m}.csv")
+        o = utils.read_pred(config.OOF_DIR, m)
         assert o[config.ID_COL].equals(train[config.ID_COL]), f"{m} OOF id 불일치"
         oof_cols.append(o["oof"].to_numpy())
-        s = pd.read_csv(config.SUBMISSION_DIR / f"{m}.csv")
+        s = utils.read_pred(config.SUBMISSION_DIR, m)
         assert s[config.ID_COL].equals(sub_ids), f"{m} submission id 불일치"
         test_cols.append(s[config.TARGET_COL].to_numpy())
     return np.column_stack(oof_cols), np.column_stack(test_cols), y

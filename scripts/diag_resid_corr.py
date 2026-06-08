@@ -1,5 +1,5 @@
 import numpy as np, pandas as pd
-from src import config, data
+from src import config, data, utils
 
 # load target
 df = data.load_train()
@@ -16,7 +16,7 @@ members = {
 }
 P = {}
 for name,f in members.items():
-    o = pd.read_csv(f'experiments/oof/{f}.csv').set_index('id')['oof']
+    o = utils.read_pred(config.OOF_DIR, f).set_index('id')['oof']
     P[name] = o.reindex(ids).values
 P = pd.DataFrame(P, index=ids)
 yv = y

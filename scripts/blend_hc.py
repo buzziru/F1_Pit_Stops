@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from src import config, data
+from src import config, data, utils
 
 DEFAULT_MEMBERS = [
     "exp_034_lgbm_combined", "exp_043_xgb_freq3", "exp_046_rmlp_nens24_full",
@@ -60,15 +60,16 @@ def main() -> None:
     args = ap.parse_args()
     members = args.members.split(",")
 
-    tr, te = data.load_train(), data.load_test()
+    tr = data.load_train()
+    sub = data.load_sample_submission()  # 출력 id 소스 (test.csv 불필요)
     y = tr[config.TARGET_COL].astype(int).to_numpy()
 
     def load_oof(m: str) -> np.ndarray:
-        o = pd.read_csv(config.OOF_DIR / f"{m}.csv").sort_values(config.ID_COL).reset_index(drop=True)
+        o = utils.read_pred(config.OOF_DIR, m).sort_values(config.ID_COL).reset_index(drop=True)
         return _logit(o["oof"].to_numpy())
 
     def load_sub(m: str) -> np.ndarray:
-        s = pd.read_csv(config.SUBMISSION_DIR / f"{m}.csv").sort_values(config.ID_COL).reset_index(drop=True)
+        s = utils.read_pred(config.SUBMISSION_DIR, m).sort_values(config.ID_COL).reset_index(drop=True)
         return _logit(s[config.TARGET_COL].to_numpy())
 
     Xtr = np.column_stack([load_oof(m) for m in members])
@@ -79,7 +80,7 @@ def main() -> None:
 
     prob = 1 / (1 + np.exp(-(Xte @ w)))
     out = config.SUBMISSION_DIR / f"{args.tag}.csv"
-    test_ids = te.sort_values(config.ID_COL)[config.ID_COL].to_numpy()
+    test_ids = sub.sort_values(config.ID_COL)[config.ID_COL].to_numpy()
     pd.DataFrame({config.ID_COL: test_ids, config.TARGET_COL: prob}).to_csv(out, index=False)
     print(f"saved {out}")
 

@@ -20,6 +20,25 @@ from dotenv import load_dotenv
 from src import config
 
 
+def read_pred(directory: Path, name: str) -> pd.DataFrame:
+    """oof/submission 예측을 로드한다 — parquet 우선, csv 폴백.
+
+    스택 멤버 예측은 디스크 절약을 위해 parquet(float32) 로 저장될 수 있다.
+    parquet 이 있으면 그것을, 없으면 기존 csv 를 읽는다 (혼재 상태 호환).
+
+    Args:
+        directory: `config.OOF_DIR` 또는 `config.SUBMISSION_DIR`.
+        name: 멤버/실험 ID (확장자 제외).
+
+    Returns:
+        예측 DataFrame.
+    """
+    pq = directory / f"{name}.parquet"
+    if pq.exists():
+        return pd.read_parquet(pq)
+    return pd.read_csv(directory / f"{name}.csv")
+
+
 def load_env() -> None:
     """프로젝트 루트 `.env` 를 환경변수로 로드한다 (W&B/Kaggle 인증).
 
