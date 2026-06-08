@@ -1,6 +1,6 @@
 # Postmortem — Playground Series S6E5 (F1 Pit Stops)
 
-> 작성 2026-06-07 · **종결 2026-06-08**(무학습 트라이얼 종결, §8). 최종 **Private 0.95460 / 목표 0.95452 초과 +0.00008 / ~148·3023팀 상위 4.9%**.
+> 작성 2026-06-07 · **종결 2026-06-08**(무학습 트라이얼 종결, §8). 최종 **Private 0.95460 / 목표 0.95452 초과 +0.00008 / 약 148위·3023팀 상위 4.9%**.
 > SSOT: 현재값 [[NEXT_SESSION]], 결정 [[decisions]], 실험 회고 `experiments/`. 이 문서 = 대회 전체 회고 + **다음 대회 재사용 템플릿**.
 
 ---
@@ -11,12 +11,12 @@
 - **데이터 함정(성패 좌우)**:
   - `Driver` 고카디(887) + **adversarial**(orig↔comp 최대 분포시프트) → 1st place는 일부 모델서 drop, 인코딩 분기의 핵심.
   - **합성 아티팩트**: LapNumber sparse 샘플링(연속률 0.99→0.32), `LapTime_Delta` 등 inherited delta 훼손(dense→sparse) → **시계열 파생 FE가 노이즈**(실패 다수의 원인, eda_05).
-- **경쟁 구도**: 3023팀. 상위팀 Private **0.9549~0.9550**. 공통 백본 = **RealMLP(@yekenot)+GBDT 3종**, 승부처 = **OOF 풀 다양성 + 정규화 메타**(186~218 OOF).
+- **경쟁 구도**: 3023팀. 상위팀 Private **0.9549–0.9550**. 공통 백본 = **RealMLP(@yekenot)+GBDT 3종**, 승부처 = **OOF 풀 다양성 + 정규화 메타**(186–218 OOF).
 
 ## 2. 성능 경로 (Private LB)
 | 단계 | 점수 | 핵심 레버 |
 |---|---|---|
-| LGBM baseline | ~0.9443 | native cat |
+| LGBM baseline | 약 0.9443 | native cat |
 | stack_v4 | 0.95273 | RealMLP 도입 + 외부증강 |
 | stack_v6/v7 | 0.95386/0.95395 | LGBM 결합FE·XGB freq-enc 분기 |
 | stack_v9 (+TabICL) | 0.95400 | 5번째 약체-직교 멤버 |
@@ -55,7 +55,11 @@
 - **서브에이전트**: eda-explorer(토큰 절약 EDA)·feature-smith(피처+누수검증)·kaggle-runner. 격리형 탐색만, 학습루프·판정은 메인 순차(동일 fold/seed).
 - **지식 영속화**: ADR-lite `decisions.md` + `NEXT_SESSION`(현재값 SSOT) + 모델별 wiki + 실험 회고 `experiments/` + **메모리**(피드백·선호 영속).
 - **EV 규율 = 트랙 천장 게이트**: 트랙 개시 전 "천장 vs 격차" 1줄 등록, 어시스턴트가 kill/continue 의견·patience, **결정은 사용자**(임의 발사/기각 금지). 토끼굴 가드.
-- **운영 교훈(재사용)**: 레지스트리 등록=노트북 작성 1단계(monitor 회수 의존)·config 직접참조도 하드코딩(override 기본값)·노브 패리티 게이트·best_iter cap 일치 검수·paired-OOF 비교(추측 < 동일 split 실측).
+- **운영 교훈(재사용)**:
+  - 레지스트리 등록 = 노트북 작성의 1단계다(monitor 회수가 여기에 의존).
+  - config 직접 참조도 하드코딩이다 — override 가능한 기본값으로 둔다.
+  - 점수 신뢰 전 노브 패리티 게이트와 best_iter cap 일치를 검수한다.
+  - 비교는 paired-OOF 로 한다(추측 < 동일 split 실측).
 
 ## 6. 다음 대회 템플릿 (재사용 체크리스트)
 **인프라(그대로 이식)**
@@ -87,7 +91,7 @@
 **프로세스**
 - [ ] 초반: **상위 솔루션/공개 노트북 분석 먼저**(yekenot처럼) → 백본·레시피·디코릴레이션 소스 파악. 공개 강모델 **레시피 그대로 자력재현**(라이브러리 default 방치 금지 — 최대 교훈).
 - [ ] 트랙 천장 게이트로 EV 관리. ADR + NEXT_SESSION + wiki SSOT 매 세션.
-- [ ] 판정 = **stack-add·잔차 d_eff**(개별 아님). |Δ|<2σ는 ≥3seed/nested. 메타-overfit(in-sample 낙관 ~−0.0004)은 held-out/nested.
+- [ ] 판정 = **stack-add·잔차 d_eff**(개별 아님). |Δ|<2σ는 ≥3seed/nested. 메타-overfit(in-sample 낙관 약 −0.0004)은 held-out/nested.
 
 **모델링 레버 우선순위**
 - [ ] 강모델 = 공개 튜닝 레시피 복제(RealMLP @yekenot 등). NN은 floor-cat/KBins/count가 유효(GBDT는 흡수).
@@ -97,7 +101,8 @@
 
 **함정(미리 가드)**
 - [ ] 고카디 adversarial 피처(인코딩 분기·drop 변형).
-- [ ] config 값은 override 가능 기본값(하드코딩 금지) · dataset 버전 race(재푸시 후 ready+여유 대기).
+- [ ] config 값은 override 가능한 기본값으로 둔다(하드코딩 금지).
+- [ ] dataset 버전 경쟁(race) 주의 — 재푸시 후 ready 확인 + 여유 대기.
 - [ ] **단일모델 짜내기 함정**: *포화 멤버*의 한계 튜닝(개별↑)은 스택 전이 0 — d_eff 축에 투자.
 - [ ] ⚠️ **반대 함정 — blanket-park 편향(이번 대회 최대 실책)**: "단일모델 강화→전이 0"을 *법칙*으로 오용해 **개별모델 강화를 거의 전부 부정**하면, **공개 SOTA보다 크게 뒤처진 멤버**(우리 RealMLP 0.9524 vs yekenot 0.9544 = −0.002 방치)를 놓친다 → RealMLP 레시피 재현(최대 레버 +0.00041)이 여러 세션 지연됨. **단일모델 천장 = 공개/SOTA 격차**로 등록(전이 휴리스틱 아님). 큰 기지 격차 = **P0**. "전이 0"은 *천장 근처 한계튜닝*에만. "강화 vs 직교추가" 대칭 평가([[single-model-ceiling-public-sota]]).
 
@@ -113,7 +118,7 @@
 **메타**: 이 넷은 "점수 레버"가 아니라 **규율 인프라** — 셋업 비용이 작고 복리로 시간을 아끼는데, **나중에 하자**로 미뤄 부채화. 다음 대회는 **대회 시작일에 셋업**(§6 스캐폴딩과 함께).
 
 ## 8. 마무리 — 무학습(no-train) 트라이얼 종결 (2026-06-08)
-종료 단계에서 "학습 없이 점수 회수" 가능성을 검증. ROC-AUC라 **단일 제출 monotone 변환은 AUC 불변**(calibration 무의미) → 무학습 레버는 ① 기존 OOF 재조합 ② 메타 과적합 갭 회수뿐. 가설: meta-OOF 0.955005 vs Private 0.95460 = **−0.0004**가 *메타 과적합*이면 정직선택으로 일부 회수 가능.
+종료 단계에서 "학습 없이 점수 회수" 가능성을 검증. ROC-AUC라 **단일 제출의 단조(monotone) 변환은 AUC 불변**(확률 보정(calibration) 무의미) → 무학습 레버는 ① 기존 OOF 재조합 ② 메타 과적합 갭 회수뿐. 가설: meta-OOF 0.955005 vs Private 0.95460 = **−0.0004**가 *메타 과적합*이면 정직선택으로 일부 회수 가능.
 - **검증 = nested-CV 정직 메타선택 + 멤버 프루닝**(outer 5-fold × inner-CV로 combiner·C·풀 재선택, 학습 0).
 
 | 풀 | in-sample meta-OOF | nested held-out | 과적합 갭 |
@@ -126,4 +131,4 @@
 - **함의**: 무학습 레버 소진. 현 0.95460이 **보유 OOF 풀의 정직 천장**. 추가 push는 학습 필요(미발견 d_eff축) — §6 백로그로 이관. **연산비용 대비 EV 0 → 트랙 종료**(트라이얼 스크립트·산출물 폐기). **교훈: AUC 메트릭에선 무학습 후처리 상한이 매우 낮다 — "메타 낙관"을 과적합으로 단정 말고 nested로 분리(분포갭 vs 선택갭).**
 
 ---
-_관련: [[decisions]] #041~#044 · [[realmlp]] · [[stacking_plan]] · `experiments/exp_realmlp_yekenot_record.md` · 상위팀 분석 `docs/idea/ANALYSIS_OF_SOLUTIONS.md`·`OOF_POOL.md`._
+_관련: [[decisions]] #041–#044 · [[realmlp]] · [[stacking_plan]] · `experiments/exp_realmlp_yekenot_record.md` · 상위팀 분석 `docs/idea/ANALYSIS_OF_SOLUTIONS.md`·`OOF_POOL.md`._
