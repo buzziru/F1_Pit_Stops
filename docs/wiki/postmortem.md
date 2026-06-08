@@ -1,6 +1,6 @@
 # Postmortem — Playground Series S6E5 (F1 Pit Stops)
 
-> 작성 2026-06-07 (마지막 레버 진행 중). 최종 **Private 0.95460 / 목표 0.95452 초과 +0.00008 / ~148·3023팀 상위 4.9%**.
+> 작성 2026-06-07 · **종결 2026-06-08**(무학습 트라이얼 종결, §8). 최종 **Private 0.95460 / 목표 0.95452 초과 +0.00008 / ~148·3023팀 상위 4.9%**.
 > SSOT: 현재값 [[NEXT_SESSION]], 결정 [[decisions]], 실험 회고 `experiments/`. 이 문서 = 대회 전체 회고 + **다음 대회 재사용 템플릿**.
 
 ---
@@ -111,6 +111,19 @@
 | **외부 인프라 하니스 늦음** | Kaggle/Colab/Lightning 반복 오류(P100 torch·dataset 버전 race·categorical setitem·best_iter cap 거짓경고·status 500)에 가드를 **반응적·늦게** 추가 | **외부 인프라 첫 사용 시 반복 오류를 선제 하니스화**. 오류 1회=즉시 재사용 가드로 코드화(gen_kernel needs_torch·fast-fail·monitor output-회수·dataset ready+버퍼). 가드 없이 N회 반복 금지 |
 
 **메타**: 이 넷은 "점수 레버"가 아니라 **규율 인프라** — 셋업 비용이 작고 복리로 시간을 아끼는데, **나중에 하자**로 미뤄 부채화. 다음 대회는 **대회 시작일에 셋업**(§6 스캐폴딩과 함께).
+
+## 8. 마무리 — 무학습(no-train) 트라이얼 종결 (2026-06-08)
+종료 단계에서 "학습 없이 점수 회수" 가능성을 검증. ROC-AUC라 **단일 제출 monotone 변환은 AUC 불변**(calibration 무의미) → 무학습 레버는 ① 기존 OOF 재조합 ② 메타 과적합 갭 회수뿐. 가설: meta-OOF 0.955005 vs Private 0.95460 = **−0.0004**가 *메타 과적합*이면 정직선택으로 일부 회수 가능.
+- **검증 = nested-CV 정직 메타선택 + 멤버 프루닝**(outer 5-fold × inner-CV로 combiner·C·풀 재선택, 학습 0).
+
+| 풀 | in-sample meta-OOF | nested held-out | 과적합 갭 |
+|---|---|---|---|
+| **WIDE 81멤버**(=현 best 레짐) | logit@0.003 **0.955004** | **0.955004** | **+0.000000** |
+| CORE_SPLIT 12(프루닝) | nnls 0.954960 / logit 0.954956 | 0.954944 | +0.000016 |
+
+- **결론(가설 기각)**: WIDE 풀 ridge-logit@0.003의 **nested 갭 = 0** → inner-CV가 5 fold 전부 동일 config 선택, **메타선택 과적합 없음**. 즉 −0.0004는 *메타 과적합 아니라* **CV→Private 표본 분포 갭(환원 불가)** — 재선택·rank결합·정규화로 회수 대상 아님.
+- **프루닝도 손해**: 12멤버로 줄이면 meta-OOF −0.00006(약체-직교 멤버가 ridge에 실기여, #040 thesis 재확증). "더 적은 풀"이 아니라 "WIDE+정규화"가 정답.
+- **함의**: 무학습 레버 소진. 현 0.95460이 **보유 OOF 풀의 정직 천장**. 추가 push는 학습 필요(미발견 d_eff축) — §6 백로그로 이관. **연산비용 대비 EV 0 → 트랙 종료**(트라이얼 스크립트·산출물 폐기). **교훈: AUC 메트릭에선 무학습 후처리 상한이 매우 낮다 — "메타 낙관"을 과적합으로 단정 말고 nested로 분리(분포갭 vs 선택갭).**
 
 ---
 _관련: [[decisions]] #041~#044 · [[realmlp]] · [[stacking_plan]] · `experiments/exp_realmlp_yekenot_record.md` · 상위팀 분석 `docs/idea/ANALYSIS_OF_SOLUTIONS.md`·`OOF_POOL.md`._
