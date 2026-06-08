@@ -3,6 +3,21 @@
 F1 레이스에서 **다음 랩 피트스톱 여부(`PitNextLap`)** 를 예측하는 이진 분류 프로젝트.
 [Kaggle Playground Series S6E5](https://www.kaggle.com/competitions/playground-series-s6e5) · 바이브 코딩 방식.
 
+## 🏁 최종 결과 (대회 종료, 2026-06-08)
+| 항목 | 값 |
+|---|---|
+| **Private LB** | **0.95460** (목표 0.95452 초과 +0.00008) |
+| 순위 | **~148 / 3023팀 · 상위 4.9%** |
+| 최종 제출 | `experiments/submissions/stack_ridge_split2.csv` |
+
+**승부처가 된 레버** (상세 회고 → [`docs/wiki/postmortem.md`](docs/wiki/postmortem.md))
+1. **RealMLP yekenot 레시피 자력재현** — 라이브러리 default 방치(0.9524) → 옵티마이저 레시피 + 풀 FE 충실 복제(0.9540). 최대 단일 레버. *"천장은 데이터가 아니라 튜닝 천장."*
+2. **ridge-LR-logits 메타러너** — 약체-직교 멤버까지 추출(HC > 공개 블렌더).
+3. **split 다양성(5/7/10-fold)** — 피처·모델 축이 corr 0.99로 붕괴해도 **fold-구조 축은 독립**(d_eff 돌파).
+4. **모델 다양성 + 외부 원본데이터 행증강 + i_\* 산술 상호작용**.
+
+→ 무학습 후처리(nested-CV 정직 메타선택)까지 종결: 현 점수가 보유 OOF 풀의 **정직한 천장**(meta-OOF↔Private 갭은 환원 불가 표본 분포 차).
+
 ## 📊 문제 요약
 | 항목 | 내용 |
 |---|---|
@@ -38,7 +53,8 @@ experiments/    # logs(JSON) · oof · submissions  (내용물 git 제외)
 - 베이스라인: **LightGBM (CPU)**, native categorical(`Driver, Compound, Race`), `is_unbalance=False`
   - 지표가 순위 기반 ROC-AUC → 클래스 가중은 실험 비교로만
 - 고카디널리티 `Driver`(887): **누수 방지 OOF 타깃 인코딩** (`config.TARGET_ENCODE_COLS` 로 활성화)
-- 로드맵: 피처 엔지니어링 → 튜닝 → XGB/CatBoost(GPU) → 스태킹/블렌딩 → seed averaging
+- **최종 파이프라인**(완료): LGBM / XGB(freq-enc 분기) / CatBoost / **RealMLP(yekenot 재현)** / TabICL 등 다양성 멤버 → **ridge-LR-logits 스택** + **split 다양성(7/10-fold)** → Private 0.95460.
+  - 모델 추가는 `train_common.py`(prepare/fit_predict 콜백), 스택은 `src/stack.py`(ridge 메타) · `scripts/blend_hc.py`(HC). Kaggle GPU 헤드리스 실행은 `kaggle/gen_kernel.py` + `monitor.py`.
 
 ## 🚀 시작하기
 ```bash

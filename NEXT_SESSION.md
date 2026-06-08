@@ -2,7 +2,10 @@
 
 > 매 세션 끝에 갱신. **현재 상태 + 다음 할 일 + 열린 이슈 링크**만. 할 일 SSOT = GitHub Issues, 상시 가이드 = `CLAUDE.md`, 지식 = `docs/wiki/`. **현재값·격차 SSOT = 이 문서**.
 
-_최종 갱신: 2026-06-07 (세션3: **🎯 목표 돌파 Private 0.95460** > 목표 0.95452 +0.00008. RealMLP yekenot 자력재현(fefull 0.954032) → ridge-LR-logits 메타 → **split 다양성(fefull+xgb 7/10-fold)이 d_eff 돌파**. 궤적 0.95405→0.95446→0.95449→0.95458→0.95460(+0.00055). ADR #041~#044. 포스트모템 [[postmortem]] 작성. split 수확체감 = 실질 천장.)_
+_최종 갱신: **2026-06-08 — 🏁 프로젝트 종료**. 최종 **Private 0.95460 / 목표 0.95452 초과 +0.00008 / ~148·3023팀 상위 4.9%**. 무학습(no-train) 마무리 트라이얼(nested-CV 정직 메타선택)까지 종결 → meta-OOF↔Private −0.0004 = **메타 과적합 아닌 CV→Private 표본 분포 갭(환원 불가)**, 무학습 레버 소진 확인. 추가 push는 학습 필요(미발견 d_eff축, 아래 백로그). **회고 = [[postmortem]](§8 무학습 종결 포함).**_
+
+> ## 🏁 종료 상태 (2026-06-08)
+> **대회 마무리.** 최종 제출 = `experiments/submissions/stack_ridge_split2.csv` (Private 0.95460). 추가 작업 없음. 아래는 도전 재개 시 백로그(전부 학습 필요·역사적 난제). 대회 전체 회고·다음 대회 템플릿은 [[postmortem]].
 
 ## 🟢 현재 최고 — stack_ridge_split2 (Private 0.95460, 🎯 목표 0.95452 초과 +0.00008)
 - 🏆 **stack_ridge_split2** = **72-OOF 풀 ridge-LR-logits(C=0.003)** = split_split(70) + **xgb043 7/10-fold**. meta-OOF 0.955005 / **Private 0.95460 / Public 0.95437**. 파일 `experiments/submissions/stack_ridge_split2.csv`.
